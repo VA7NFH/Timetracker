@@ -1,0 +1,92 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=windows-1250">
+    <link rel="stylesheet" href="timetracker.css" type="text/css"> 
+    <script type="text/javascript" src="jquery-1.6.4.min.js"></script>
+    <!-- script type="text/javascript" src="timetracker_data2.js"></script --> 
+    <script type="text/javascript" src="timetracker.js"></script>
+    <title>Timetracker</title>
+  </head>
+  <body onLoad="ttInit();">
+  <h1>timetracker</h1>
+
+    <div id="feedback" class="notice" style="display:none">
+    
+    </div> 
+    
+    <div class="section" id="client-controls">
+    <div class="section-title-container"><div class="section-title">Client</div></div> 
+
+      <form method="post" id="client-form" action="" ondblclick="addClientForm()">     
+        <div id="add-client-form" style="display:none;">
+              <input type="text" id="add-client-input" placeholder="New client name"/>
+              <a class="button" onClick="saveClient()">Save</a>
+              <a class="button" onClick="cancelAddClient()">Cancel</a>
+        </div> 
+             
+        <div id="select-client-form" style="display:block;">
+        <select name="client_id" id="client-select" onchange="setClient()">
+              <option value="">Select client... </option>
+              
+        </select>
+        <a class="button edit" onClick="showEditForm('client')">Edit</a><a class="button" onClick="addClientForm()">Add new</a>
+        </div>
+      </form>
+    </div>
+    
+    <div class="section" id="project-controls" style="display:none;">
+      <div class="section-title-container"><div class="section-title">Project</div></div> 
+      <form method="post" id="project-form" action="">
+      
+        <div id="add-project-form" style="display:none;">
+            <input type="text" id="add-project-input" placeholder="New project name"/>
+            <a class="button" onClick="saveProject()">Save</a>
+            <a class="button" onClick="cancelAddProject()">Cancel</a>
+        </div> 
+           
+        <div id="select-project-form" style="display:block;">     
+          <select name="project_id" id="project-select" onchange="setProject()">
+                <option value="testval" style="color: #aaaaaa">Select project... </option>
+          </select>
+          <a class="button edit" id="edit-project-button" onClick="showEditForm('project')" style="display:none;">Edit</a><a class="button" onClick="addProjectForm()">Add new</a>
+        </div>
+      </form>                                
+    </div>
+    
+    <div class="section" id="task-controls"  style="display:none;">
+      <div class="section-title-container"><div class="section-title">Task</div></div> 
+      <form method="post" id="task-form" action="">
+      
+        <select name="task_id" id="task-select" onchange="setTask()">
+              <option value="">Select task... </option>
+        </select>
+        
+        <a onClick="startSession()" id="session-start-button" class="button"  style="display: none;">Start</a>
+        <a class="button edit" id="task-edit-button" onClick="showEditForm('task')">Edit</a>
+        <br>
+        <input type="text" id="new-task-input" name="new-task-input" placeholder="Enter new task">
+        <a onClick="saveNewTask()" class="button" id="save-new-task-button">Save</a>
+                
+      </form>
+    </div> 
+    
+    <div id="test-output"> 
+    </div>
+    <div id="active-session" style="position:absolute; top:0; left:0; width: 100%; height:100%; background-color: #fff; display:none; z-index: 1000; padding: 20%">
+  </div>
+
+  <a onClick="editJson()" class="button">Show/Edit JSON</a>  
+  <a onClick="synchToServer()" class="button">Synch to server</a>   
+  <a onClick="synchFromServer()" class="button">Synch from server</a>
+  <a onClick="deleteLocalStorage()" class="button">Delete LS data</a> 
+  <div id="json-output"></div>
+  
+  <div id="edit-popup" style="display: none;" class="modal-popup">
+  
+  </div>
+  <div class="modal-bg" id="modal-bg" style="display:none;">
+  
+  </div>
+  </body>
+</html>                                                        
