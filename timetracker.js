@@ -33,7 +33,7 @@ function ttInit(){
         "clients" : {}        
       }    
        
-      $("#edit-popup").html('<h3>Bienvenue</h3>It looks like you haven\'t used the timetracker on this device before, or you\'ve cleared your local storage data. In you\'d like to synch this device with existing online data, enter your user key below.<form><input id="add-userkey-input" placeholder="Enter key"/><a class="button" onClick="saveUserKey()">Save</a></form>');
+      $("#edit-popup").html('<h3>Bienvenue</h3>It looks like you haven\'t used the timetracker on this device before, or you\'ve cleared your local storage data. If you\'d like to synch this device with existing online data, enter your user key below.<form><input id="add-userkey-input" placeholder="Enter key"/><a class="button" onClick="saveUserKey()">Save</a></form>');
       
       $("#modal-bg").show();
       $("#edit-popup").show();
@@ -458,7 +458,7 @@ function saveNewTask(){
 }
 
 function properDateTime(dateObj){
-   return pad(dateObj.getFullYear())+'-'+pad(dateObj.getMonth())+'-'+pad(dateObj.getDay())+' '+pad(dateObj.getHours())+':'+pad(dateObj.getMinutes())+':'+pad(dateObj.getSeconds());
+   return pad(dateObj.getFullYear())+'-'+pad((dateObj.getMonth()+1))+'-'+pad(dateObj.getDate())+' '+pad(dateObj.getHours())+':'+pad(dateObj.getMinutes())+':'+pad(dateObj.getSeconds());
 }
 
 function updateDataObject(level,data){
@@ -472,20 +472,28 @@ function updateDataObject(level,data){
     ttData.clients[current_client.id].projects[current_project.id].tasks[current_task.id] = data;
   }
   if(level == 'session'){
+    if(typeof ttData.clients[current_client.id].projects[current_project.id].tasks[current_task.id].sessions != "object"){
+       ttData.clients[current_client.id].projects[current_project.id].tasks[current_task.id].sessions = {};
+    }
     ttData.clients[current_client.id].projects[current_project.id].tasks[current_task.id].sessions[data.id] = data;
   }
 }
 
 function startSession(){                                         
   
-  var nowDate = new Date(); 
+  var nowDate = new Date();
+  
+  dbg(nowDate,'nowDate');
+  dbg(nowDate.getDay(),'nowDate.getDay()');
+  
+   
      
   current_session = {
     'id' : newId(),
     'start_time' : properDateTime(nowDate),  
   }
   
-  dbg(current_session); 
+  dbg(current_session,'Current session'); 
   dbg(current_task);
   
   updateDataObject('session',current_session);
@@ -495,7 +503,8 @@ function startSession(){
   ttSave(); 
   ttSaveCurrent();
 
-}  
+} 
+ 
 function endSession(){  
 
   clearInterval(counterId);                                      
@@ -577,6 +586,8 @@ function incrementCurrentDuration() {
     var current = new Date();
     
     currentDuration = dateDiff(startDate,current);
+    
+    dbg(startDate);
 
     document.getElementById('current_duration').innerHTML = currentDuration;
     
@@ -726,6 +737,8 @@ function ttDisplayUpdate(preset){
       document.getElementById('active-session').style.display = 'block';
    
       startDate = new Date(current_session.start_time.replace(' ','T'));
+      
+      dbg(current_session.start_time.replace(' ','T'),'Start date input');
     
       counterId = setInterval(incrementCurrentDuration, 1000);
       
@@ -764,9 +777,9 @@ function saveJson(){
 }
 
 function synchToServer(){
-dbg(ttData.userKey);  
+  
    $.ajax({
-       url: 'http://localhost/timetracker/tt2/synch.php?action=synchToServer&key='+localStorage.ttData.userKey,
+       url: 'http://photosynth.ca/timetracker/synch.php?action=synchToServer&key='+ttData.userKey,
        type: 'POST',
        contentType:'application/json',
        data: JSON.stringify(ttData),
@@ -790,7 +803,8 @@ dbg(ttData.userKey);
 function synchFromServer(){
  
      $.ajax({
-         url: 'http://localhost/timetracker/tt2/synch.php?action=synchFromServer&key='+ttData.userKey,
+         //url: 'http://localhost/timetracker/tt2/synch.php?action=synchFromServer&key='+ttData.userKey,
+         url: 'http://photosynth.ca/timetracker/synch.php?action=synchFromServer&key='+ttData.userKey,
          type: 'POST',
          contentType:'application/json',
          //dataType:'json',
