@@ -1,10 +1,7 @@
 
 var current_client;
-
 var current_project;
-
-var current_task;
-                  
+var current_task;                  
 var current_session;
 
 var ttData;
@@ -17,9 +14,7 @@ var feedbackElement;
 
 var startDate;    
 var nowDate;
-
 var counterId;
-
 var currentDuration;
 
 var ttSettings = {
@@ -29,24 +24,7 @@ var ttSettings = {
 
 function ttInit(){
 
-    //console.log(localStorage);
-    
-    /*
-    delete localStorage.ttData;
-    delete localStorage.ttClientId;   
-    delete localStorage.ttProjectId;  
-    delete localStorage.ttTaskId;    
-    delete localStorage.ttSessionId;
-    */
     feedbackElement = document.getElementById('feedback');
-    
-
-    //userKey = newId();
-    //localStorage.ttUserKey = userKey
-    
-    //dbg(localStorage,"LS");
-    
-    //$('select').selectric();
     
     if(!localStorage.ttData){
       
@@ -66,20 +44,6 @@ function ttInit(){
       
     }else{
       ttData = JSON.parse(localStorage.ttData);
-      
-      /*
-      var client_options = [];
-    
-      for(client_id in ttData.clients){
-         client_options.push([client_id,ttData.clients[client_id].name]);
-      }
-         
-      cs = document.getElementById('client-select');
-  
-      updateSelectOptions(cs,client_options);
-      */
-      
-      // 
       
       updateSelectOptionsFromData('client');
       
@@ -105,7 +69,6 @@ function ttInit(){
             setTask(current_task.id);
             
             if(localStorage.ttSessionId){
-              // We're in the middle of a session
               current_session = current_task.sessions[localStorage.ttSessionId];             
               ttDisplayUpdate('inSession');
             }            
@@ -117,7 +80,7 @@ function ttInit(){
     }
     
    $("form").bind("keypress", function(e) {
-     // dbg(e.keyCode);
+ 
      if (e.keyCode == 13) {
         dbg(document.activeElement,'Active element');
         if(document.activeElement.id == 'new-task-input'){
@@ -127,7 +90,7 @@ function ttInit(){
         }else if(document.activeElement.id == 'add-client-input'){
            saveClient();
         }   
-        return false; // ignore default event
+        return false;  
      }
      
    });
@@ -255,13 +218,6 @@ function setClient(clientId){
   
 }
 
-/*
-Updates the entire controls section based on ttData and current objects
-  - Determines whther to show the dropdown
-  - Determines whether to show edit button
-  - Updates contents of dropdown
-  - Etc.
-*/
 
 var types = ['user','client','project','task','session'];
 
@@ -391,7 +347,14 @@ function updateSectionFromData(type){
      $("#add-"+type+"-form").hide();  
   }
   
-
+   
+  /*
+  Updates the entire controls section based on ttData and current objects
+    - Determines whther to show the dropdown
+    - Determines whether to show edit button
+    - Updates contents of dropdown
+    - Etc.
+  */
   /* Possible situations: 
       parent is unset — hide entire section
       parent is set, no items exist — show add form (no dropdown or edit)
@@ -432,9 +395,7 @@ function setProject(id){
     document.getElementById('task-controls').style.display = "block";
     
     updateSelectOptionsFromData('task');
-    
-    
-    
+      
   }
   
   updateSectionFromData('task');
@@ -595,7 +556,7 @@ function setFeedback(message,type){
   feedbackElement.class = type;   
   feedbackElement.style.display = 'block';
   
-  setTimeout(hideFeedback,5000);
+  setTimeout(hideFeedback,8000);
   
 }
 
@@ -827,11 +788,6 @@ dbg(ttData.userKey);
 
 
 function synchFromServer(){
-
-
-     console.log(ttData.userKey,'User key');
-     
-     console.log('Other stuff');
  
      $.ajax({
          url: 'http://localhost/timetracker/tt2/synch.php?action=synchFromServer&key='+ttData.userKey,
@@ -849,12 +805,9 @@ function synchFromServer(){
             
             server_data.userKey = ttData.userKey; 
             ttData = server_data;  
-            ttSave(); 
-                     
+            ttSave();                      
             setFeedback('Data successfully received from server.');
-            dbg(result)
-            //document.getElementById('json-output').innerHTML = '<pre>'+JSON.stringify(JSON.parse(result),null,'   ')+'</pre>'; 
-            //document.getElementById('json-output').innerHTML = '<pre>'+result+'</pre>';
+
          },
          error: function(xhr, ajaxOptions, thrownError){
             setFeedback('Error synching to server: '+thrownError);
@@ -997,11 +950,6 @@ function saveUserKey(){
   $("#modal-bg").hide(); 
   $("#edit-popup").hide();  
   $("#edit-popup").html('');
-  
-  
-  dbg(localStorage.ttData,'LS ttData');
-  
-  //location.reload();
   
   //ttInit();
   
