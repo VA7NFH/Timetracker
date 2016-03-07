@@ -482,20 +482,13 @@ function updateDataObject(level,data){
 function startSession(){                                         
   
   var nowDate = new Date();
-  
-  dbg(nowDate,'nowDate');
-  dbg(nowDate.getDay(),'nowDate.getDay()');
-  
-   
      
   current_session = {
     'id' : newId(),
     'start_time' : properDateTime(nowDate),  
   }
   
-  dbg(current_session,'Current session'); 
-  dbg(current_task);
-  
+
   updateDataObject('session',current_session);
   
   ttDisplayUpdate('inSession');
