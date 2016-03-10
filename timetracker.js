@@ -1,4 +1,5 @@
 
+
 var current_client;
 var current_project;
 var current_task;                  
@@ -21,6 +22,9 @@ var ttSettings = {
   "hide_completed_tasks" : true
 }
 
+if(typeof require === "function"){
+  var http = require('http'); 
+}
 
 function ttInit(){
 
@@ -149,6 +153,7 @@ function cancelAddProject(){
 }
 
 function saveProject(){
+
   new_project = {
       'id' : newId(),
       'name' : document.getElementById('add-project-input').value,
@@ -157,15 +162,21 @@ function saveProject(){
   
   dbg(new_project,'saving new project');
   
+  if(typeof ttData.clients[current_client.id].projects != "object"){
+    ttData.clients[current_client.id].projects = {};
+  }
+  
   ttData.clients[current_client.id].projects[new_project.id] = new_project;
   
-  ttSave();
+  ttSave();  
   
-  updateSelectOptions(project_select,[[new_project.id,new_project.name]],true);
+  updateSelectOptionsFromData('project');
   
+  cancelAddProject();    
+        
   setProject(new_project.id);
   
-  cancelAddProject();
+
   
   setFeedback('Project saved','success'); 
   
@@ -434,6 +445,7 @@ function saveNewTask(){
   input = document.getElementById('new-task-input');
 
   task_name = input.value;
+
   
   var new_task = {
     'id' : newId(task_name,'task'),
@@ -442,6 +454,17 @@ function saveNewTask(){
     'sessions' : {}  
   }
   
+  if(gebi("billable-input").checked == true){
+  
+    new_task.isBillable = true;
+  
+  }else{
+  
+    new_task.isBillable = false;
+    
+  } 
+  
+   
   current_task = new_task;
   
   ttData.clients[current_client.id].projects[current_project.id].tasks[new_task.id] = new_task;  
@@ -491,7 +514,15 @@ function startSession(){
 
   updateDataObject('session',current_session);
   
-  ttDisplayUpdate('inSession');
+  document.getElementById('active-session').innerHTML =  '<div id="current-info"><b>'+current_client.name+'</b> > <b>'+current_project.name+'</b> > <b>'+current_task.name+'</b></div><div id="current_duration"><span style="color:#dddddd">00:00:00</span></div><input type="text" id="session-notes-input" placeholder="Add notes" /><div><input type="checkbox"  id="task-complete-input"/><label for="task-complete-input">Task complete</label></div><a class="button" onClick="endSession()">End Session</a>';
+      
+  document.getElementById('active-session').style.display = 'block';
+   
+  startDate = new Date(current_session.start_time.replace(' ','T'));
+      
+  dbg(current_session.start_time.replace(' ','T'),'Start date input');
+    
+  counterId = setInterval(incrementCurrentDuration, 1000);
   
   ttSave(); 
   ttSaveCurrent();
@@ -505,9 +536,9 @@ function endSession(){
   var nowDate = new Date(); 
      
   current_session.end_time = properDateTime(nowDate), 
-  current_session.notes = $("#session-notes-input").value;
+  current_session.notes = $("#session-notes-input").val();
   
-  if($("#task-complete-input").value == "on"){
+  if(document.getElementById("task-complete-input").checked == true){
   
     dbg('Task complete');
     
@@ -570,7 +601,7 @@ function dateDiff(date1,date2){
     
     diffMs = date2.getTime() - date1.getTime();
     var date3 = new Date(diffMs);
-    return pad(date3.getUTCHours()) + ':' + pad(date3.getUTCMinutes()) + ':' + pad(date3.getUTCSeconds());
+    return pad(date3.getHours()) + ':' + pad(date3.getMinutes()) + ':' + pad(date3.getSeconds());
         
 }
 
@@ -617,11 +648,7 @@ function updateSelectOptions(target_element,new_options,append){
 
 function updateSelectOptionsFromData(type){
 
-    dbg(type,'Updating select field from data...');
-    
     options = [];
-    
-
     
     setToCurrent = false;
     
@@ -653,13 +680,20 @@ function updateSelectOptionsFromData(type){
        }      
     }
 
-    options = options.sort(function(a, b) {return a[1] - b[1]}); 
+
+    options.sort(function(a, b) {   
+      
+      a = a[1].replace('[','zzzz');  
+      b = b[1].replace('[','zzzz');
+      return a.localeCompare(b);
+
+    }); 
+    
     
     if(!setToCurrent){
       options.unshift(['','Select '+type+'...']);
     } 
           
-    dbg(options,'options before update');
           
     select_element = document.getElementById(type+'-select')
           
@@ -725,15 +759,7 @@ function ttSaveCurrent(){
 
 function ttDisplayUpdate(preset){
   if(preset == 'inSession'){
-      document.getElementById('active-session').innerHTML =  '<div id="current-info"><b>'+current_client.name+'</b> > <b>'+current_project.name+'</b> > <b>'+current_task.name+'</b></div><div id="current_duration"><span style="color:#dddddd">00:00:00</span></div><input type="text" id="session-notes-input" placeholder="Add notes" /><div><input type="checkbox"  id="task-complete-input"/><label for="task-complete-input">Task complete</label></div><a class="button" onClick="endSession()">End Session</a>';
-      
-      document.getElementById('active-session').style.display = 'block';
-   
-      startDate = new Date(current_session.start_time.replace(' ','T'));
-      
-      dbg(current_session.start_time.replace(' ','T'),'Start date input');
-    
-      counterId = setInterval(incrementCurrentDuration, 1000);
+
       
   }else if(preset == 'endSession'){
   
@@ -769,61 +795,6 @@ function saveJson(){
        
 }
 
-function synchToServer(){
-  
-   $.ajax({
-       url: 'http://photosynth.ca/timetracker/synch.php?action=synchToServer&key='+ttData.userKey,
-       type: 'POST',
-       contentType:'application/json',
-       data: JSON.stringify(ttData),
-       //dataType:'json',
-       success : function(result){
-          setFeedback('Data successfully sent to server');
-          dbg(result)
-          document.getElementById('json-output').innerHTML = result;
-       },
-       error: function(xhr, ajaxOptions, thrownError){
-          setFeedback('Error synching to server: '+thrownError);
-          dbg(xhr);
-       },
-       
-       
-  });
-
-}
-
-
-function synchFromServer(){
- 
-     $.ajax({
-         //url: 'http://localhost/timetracker/tt2/synch.php?action=synchFromServer&key='+ttData.userKey,
-         url: 'http://photosynth.ca/timetracker/synch.php?action=synchFromServer&key='+ttData.userKey,
-         type: 'POST',
-         contentType:'application/json',
-         //dataType:'json',
-         success : function(result){
-         
-            try{            
-              server_data = JSON.parse(result);   
-            }catch(err){
-               setFeedback('Error parsing data from server.','error');
-               throw 'JSON parsing exception';           
-            }
-            
-            server_data.userKey = ttData.userKey; 
-            ttData = server_data;  
-            ttSave();                      
-            setFeedback('Data successfully received from server.');
-
-         },
-         error: function(xhr, ajaxOptions, thrownError){
-            setFeedback('Error synching to server: '+thrownError);
-            dbg(xhr);
-         },
-         
-         
-    });
-}
 
 function cancelEditForm(){
   $('#edit-popup').html(''); 
@@ -973,4 +944,176 @@ function deleteLocalStorage(){
 
 }
 
-                                          
+function gebi(id){
+  return document.getElementById(id);
+}
+
+
+
+
+/* ######################### Server synching functions #########################  */
+
+
+
+
+
+function synchToServer(){ 
+      
+  
+   setFeedback('Synching to server. This may take a minute....');
+
+   // Do normal Ajax synch if we're in the web version
+   if(window.location.hostname.search("photosynth.ca") > -1){
+   
+     
+     $.ajax({
+         url: 'http://photosynth.ca/timetracker/synch.php?action=synchToServer&key='+ttData.userKey,
+         type: 'POST',
+         contentType:'application/json',
+         data: JSON.stringify(ttData),
+         //dataType:'json',
+         success : function(result){
+            setFeedback('Data successfully sent to server');
+            dbg(result)
+            document.getElementById('json-output').innerHTML = result;
+         },
+         error: function(xhr, ajaxOptions, thrownError){
+            setFeedback('Error synching to server: '+thrownError);
+            dbg(xhr);
+         },
+         
+         
+    });
+   
+   }else if(typeof http === "object"){   
+   
+      nodeRequest('to');      
+   
+   }else{
+      setFeedback('Current environment doesn\'t allow server synching!');
+   }
+}
+
+
+function synchFromServer(){    
+   
+   setFeedback('Synching from server. This may take a minute....');
+
+  if(window.location.hostname.search("photosynth.ca") > -1){
+  
+     $.ajax({
+         url: 'http://photosynth.ca/timetracker/synch.php?action=synchFromServer&key='+ttData.userKey,
+         type: 'POST',
+         contentType:'application/json',
+         //dataType:'json',
+         success : function(result){
+         
+            try{            
+              server_data = JSON.parse(result);   
+            }catch(err){
+               setFeedback('Error parsing data from server.','error');
+               throw 'JSON parsing exception';           
+            }
+            
+            server_data.userKey = ttData.userKey; 
+            ttData = server_data;  
+            ttSave();                      
+            setFeedback('Data successfully received from server.');
+
+         },
+         error: function(xhr, ajaxOptions, thrownError){
+            setFeedback('Error synching from server: '+thrownError);
+            dbg(xhr);
+         },
+                 
+      });
+      
+   }else if(typeof http === "object"){
+      
+      nodeRequest('from');      
+   
+   }else{
+      setFeedback('Current environment doesn\'t allow server synching!');
+   }
+}
+
+function ajaxRequest(){
+
+
+}
+
+function nodeRequest(direction){
+
+  if(direction == 'to'){
+    var postData = JSON.stringify(ttData);
+    reqAction = 'synchToServer';
+  }else{
+    reqAction = 'synchFromServer';
+    var postData = '';
+  }
+  
+  var options = {
+    hostname: 'www.photosynth.ca',
+    port: 80,
+    path: '/timetracker/synch.php?action='+reqAction+'&key='+ttData.userKey,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': (postData.length + 9)
+    }
+  };
+
+  var request = http.request(options, function(result){
+  
+    console.log(`STATUS: ${result.statusCode}`);
+    console.log(`HEADERS: ${JSON.stringify(result.headers)}`);
+    
+    result.setEncoding('utf8');
+    
+    var resultData = '';
+    
+    result.on('data', function(chunk){
+      console.log(`BODY: ${chunk}`);
+      resultData += chunk;
+    });
+    
+    result.on('end', function(){
+      console.log('No more data in response.')
+      console.log(resultData);
+      
+      setFeedback('Server synch complete.');
+      document.getElementById('json-output').innerHTML = resultData;
+      
+      if(direction == 'from'){
+               
+         try{            
+          server_data = JSON.parse(resultData);   
+         }catch(err){
+           setFeedback('Error parsing data from server. Error:'+err,'error');
+           throw 'JSON parsing exception';           
+         }
+      
+         server_data.userKey = ttData.userKey; 
+         ttData = server_data;  
+         ttSave();      
+                         
+         setFeedback('Data successfully received from server.');
+      
+      }     
+      
+    })
+    
+  });
+
+  request.on('error', function(e){
+    console.log(`problem with request: ${e.message}`);
+    setFeedback('Error synching to server: '+e.message);
+  });
+  
+  // write data to request body
+  
+  dbg(postData,'writing to request:');
+  
+  request.write(postData);
+  request.end();                                          
+}
