@@ -208,3 +208,20 @@ h1{
   font-weight: bold;
   text-align: right;
 }
+
+a.view-switch{
+  display: block;
+  float: left;
+  margin-left: 3em;
+  color: #aaa;
+}
+
+a.view-switch:hover{
+  
+  color: #000;
+}
+
+a.current-view{
+color: #000;
+
+}

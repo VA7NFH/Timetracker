@@ -15,16 +15,67 @@ var currentDuration;
 
 var view = "track";
 
-var ttSettings = {
-  "hide_completed_tasks" : true,
-  "top_level_title" : "Client",
-  "show_billability" : true
+var defaultSettings = {
+  top_level_title : "Client",
+  show_billability : true,
+  reminder_interval : false,
+  reminder_title : "Pomodoro Complete!",
+  reminder_message : "Please take a five minute break. Breathe, stretch, look around!",
+  reminder_delay : 1
+}
+
+var reminderDelay = 0;
+
+var editFields = {
+
+  client : {
+    name : {
+      displayAs : "Name",
+      type : "text"    
+    },
+    id : {
+      displayAs : "ID",
+      type : "text"    
+    }  
+  },
+  project : {
+    name : {
+      displayAs : "Name",
+      type : "text"    
+    },
+    id : {
+      displayAs : "ID",
+      type : "text"    
+    }  
+  },
+  task : {
+    name : {
+      displayAs : "Name",
+      type : "text"    
+    },
+    id : {
+      displayAs : "ID",
+      type : "text"    
+    },    
+    status : {
+      displayAs : "Status",
+      type : "select",
+      options : ["Active","On hold","Completed"]    
+    },   
+    is_billable : {
+      displayAs : "Billable",
+      type : "select",
+      options : [{text:"Yes", value:true},{text:"No",value:false}]    
+    }  
+  }
 }
 
 // Load Node HTTP module, if available
 if(typeof require === "function"){
   var http = require('http'); 
 }
+
+Notification.requestPermission();
 
 
 /* ############################# INITIALIZE ################################# */
@@ -37,7 +88,8 @@ function ttInit(){
       
       ttData = {
         "userKey" : newId(),
-        "clients" : {}        
+        "clients" : {},
+        "settings" : defaultSettings        
       }    
        
       $("#edit-popup").html('<h3>Bienvenue</h3>It looks like you haven\'t used the timetracker on this device before, or you\'ve cleared your local storage data. If you\'d like to synch this device with existing online data, enter your user key below.<form><input id="add-userkey-input" placeholder="Enter key"/><a class="button" onClick="saveUserKey()">Save</a></form>');
@@ -50,6 +102,12 @@ function ttInit(){
       
     }else{
       ttData = JSON.parse(localStorage.ttData);
+      
+      if(!ttData.settings){
+         ttData.settings = defaultSettings;
+         ttSave();
+      }
+      
       
       updateSelectOptionsFromData('client');
       
@@ -101,6 +159,7 @@ function ttInit(){
      }
      
    });  
+   
 }
 
 
@@ -377,7 +436,7 @@ function endSession(){
 }
 
 
-/* ############################# FEEDBACK ################################### */
+/* ####################### FEEDBACK & NOTIFICATIONS ######################### */
 
 
 function hideFeedback(){
@@ -399,7 +458,15 @@ function setFeedback(message,type,stayVisible){
   }
 }
 
-
+function desktopNotify(message,title,icon) {
+  title || (title = "Timtracker notification");
+  
+  options = {
+      body: message,
+      icon: icon
+  }
+  new Notification(title,options);
+}
 
 
 
@@ -428,10 +495,22 @@ function timeDiffSecsFromString(dateStr1,dateStr2){
  
 }
 
-function incrementCurrentDuration() {    
-    currentDuration = timeFromSeconds(moment().diff(startDate)/1000); 
+function incrementCurrentDuration() {
+    
+    currentDurationSeconds = moment().diff(startDate)/1000;  
+    currentDuration = timeFromSeconds(currentDurationSeconds); 
     document.getElementById('current_duration').innerHTML = currentDuration;   
-    document.title = currentDuration + ' - Timetracker';    
+    document.title = currentDuration + ' - Timetracker';
+    
+    if(getSetting('reminder_interval') && (currentDurationSeconds/60) > (parseFloat(getSetting('reminder_interval'))+reminderDelay)){
+    
+      desktopNotify(getSetting('reminder_message'),getSetting('reminder_title'));
+      
+      reminderDelay += parseFloat(getSetting('reminder_delay'));
+    
+    }    
+    
+        
 }
 
 
@@ -469,6 +548,10 @@ function dbg(test_data,text){
   
   console.log(test_data);
   
+}
+
+function getSetting(name){
+  return ttData.settings[name];
 }
 
 
@@ -823,19 +906,20 @@ function saveEditForm(type){
   }else if(type == 'session'){
     session_id = $("#session_id-input").val();
     properties = current_task.sessions[session_id];
+  }else if(type == 'settings'){
+    properties = ttData.settings;
   }
-   
-  dbg(properties,'props before updating from form');
+    
   for (key in properties){                                                                 
     if(typeof properties[key] != "object"){
       properties[key] = document.getElementById(type+"-"+key+"-edit-input").value;      
     }
   }
   
-  dbg(properties,'Updating data obj with properties:');    
+ 
   updateDataObject(type,properties);
   
-  if(type != "session"){
+  if(type != "session" && type != "settings"){
     updateSelectOptionsFromData(type);  
   }                
 
@@ -914,6 +998,8 @@ function showEditForm(type){
   }else if(type == 'session'){
     session_id = document.getElementById("session_id-input").value;
     properties = current_task.sessions[session_id];
+  }else if(type == "settings"){  
+    properties = ttData.settings;
   } 
   
   for (key in properties){                                                                 
@@ -922,8 +1008,14 @@ function showEditForm(type){
     }
   }
   
-  $("#edit-popup").append('<div><a class="button" onClick="saveEditForm(\''+type+'\')">Save</a><a class="button" onClick="cancelEditForm()">Cancel</a><a class="button red" onClick="deleteFromEditForm(\''+type+'\')">Delete Item</a></div></form>');
-    
+  $("#edit-popup").append('<div>');
+  $("#edit-popup").append('<a class="button" onClick="saveEditForm(\''+type+'\')">Save</a>');
+  $("#edit-popup").append('<a class="button" onClick="cancelEditForm()">Cancel</a>');
+  
+  if(type != "settings"){
+    $("#edit-popup").append('<a class="button red" onClick="deleteFromEditForm(\''+type+'\')">Delete Item</a></div></form>');
+  }  
+  
   $("#modal-bg").show(); 
   $("#edit-popup").show();                  
 
