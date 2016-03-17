@@ -20,7 +20,7 @@ var defaultSettings = {
   show_billability : true,
   reminder_interval : false,
   reminder_title : "Pomodoro Complete!",
-  reminder_message : "Please take a five minute break. Breathe, stretch, look around!",
+  reminder_message : "Please take a five minute break. <b>Breathe, stretch, look around!</b>",
   reminder_delay : 1
 }
 
@@ -618,8 +618,8 @@ function updateSelectOptionsFromData(type,idSuffix){
 
     options.sort(function(a, b) {   
       
-      a = a[1].replace('[','zzzz');  
-      b = b[1].replace('[','zzzz');
+      a = a[1].replace('[DONE]','zzzz');  
+      b = b[1].replace('[DONE]','zzzz');
       return a.localeCompare(b);
 
     }); 
@@ -1035,7 +1035,7 @@ function showEditForm(type){
 function synchToServer(){ 
       
   
-   setFeedback('Synching to server. This may take a minute....','notice',true);
+   setFeedback('&nbsp;<i class="fa fa-info-circle fa-spin fa-lg"></i>&nbsp; &nbsp;Synching to server. This may take a minute....','notice',true);
 
    // Do normal Ajax synch if we're in the web version
    if(window.location.hostname.search("photosynth.ca") > -1){
@@ -1070,7 +1070,7 @@ function synchToServer(){
 
 function synchFromServer(){    
    
-   setFeedback('Synching from server. This may take a minute....');
+   setFeedback('<i class="fa fa-lightbulb-o fa-spinner fa-lg"></i> Synching from server. This may take a minute....');
 
   if(window.location.hostname.search("photosynth.ca") > -1){
   
@@ -1119,6 +1119,9 @@ function nodeRequest(direction){
   if(direction == 'to'){
     var postData = JSON.stringify(ttData); 
     reqAction = 'synchToServer';
+    
+    dbg(postData,"Node synching to server with:");
+    
   }else{
     reqAction = 'synchFromServer';
     var postData = '';
@@ -1126,11 +1129,12 @@ function nodeRequest(direction){
   
   var options = {
     hostname: 'www.photosynth.ca',
-    //port: 80,
+    port: 80,
     path: '/timetracker/synch.php?action='+reqAction+'&key='+ttData.userKey,
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(postData)
     }
   };
 
@@ -1152,30 +1156,31 @@ function nodeRequest(direction){
       console.log('No more data in response.')
       console.log(result);     
       console.log(resultData);
-      if(result.statusCode = 200){
-        setFeedback('Server synch complete.');
+      
+      if(result.statusCode == 200){
+         
+         try{            
+           server_data = JSON.parse(resultData);   
+         }catch(err){
+           setFeedback('Error parsing data from server. Error:'+err,'error');
+           throw 'JSON parsing exception';           
+         }                  
+                                    
+         if(direction == 'from'){                            
+             server_data.userKey = ttData.userKey; 
+             ttData = server_data;  
+             ttSave();      
+                             
+             setFeedback('Data successfully received from server.');
+          
+        }else if(direction == 'to'){            
+             setFeedback('Server synch complete. '+server_data.updateCount+" records updated, "+server_data.insertCount+" new records added");
+        }        
+                   
       }else{
         setFeedback('Server synch failed! Status:'+result.statusCode,'error',true);
       }
       
-      document.getElementById('json-output').innerHTML = resultData;
-      
-      if(direction == 'from'){
-               
-         try{            
-          server_data = JSON.parse(resultData);   
-         }catch(err){
-           setFeedback('Error parsing data from server. Error:'+err,'error');
-           throw 'JSON parsing exception';           
-         }
-      
-         server_data.userKey = ttData.userKey; 
-         ttData = server_data;  
-         ttSave();      
-                         
-         setFeedback('Data successfully received from server.');
-      
-      }     
       
     })
     
