@@ -22,7 +22,7 @@ var defaultSettings = {
   reminder_title : "Pomodoro Complete!",
   reminder_message : "Please take a five minute break. <b>Breathe, stretch, look around!</b>",
   reminder_delay : 1
-}
+};
 
 var reminderDelay = 0;
 
@@ -68,7 +68,7 @@ var editFields = {
       options : [{text:"Yes", value:true},{text:"No",value:false}]    
     }  
   }
-}
+};
 
 // Load Node HTTP module, if available
 if(typeof require === "function"){
@@ -90,14 +90,14 @@ function ttInit(){
         "userKey" : newId(),
         "clients" : {},
         "settings" : defaultSettings        
-      }    
+      };    
        
       $("#edit-popup").html('<h3>Bienvenue</h3>It looks like you haven\'t used the timetracker on this device before, or you\'ve cleared your local storage data. If you\'d like to synch this device with existing online data, enter your user key below.<form><input id="add-userkey-input" placeholder="Enter key"/><a class="button" onClick="saveUserKey()">Save</a></form>');
       
       $("#modal-bg").show();
       $("#edit-popup").show();
       
-      return
+      return;
                                
       
     }else{
@@ -184,7 +184,7 @@ function saveClient(){
       'id' : newId(),
       'name' : document.getElementById('add-client-input').value,
       'projects' : {}
-  }
+  };
    
   ttData.clients[new_client.id] = new_client; 
   ttSave();
@@ -214,7 +214,7 @@ function setClient(clientId){
   project_count = 0;
   
   if(typeof current_client.projects == "object"){
-    for (project_id in current_client.projects){
+    for(project_id in current_client.projects){
        project_count += 1;
     }
   }
@@ -258,7 +258,7 @@ function saveProject(){
       'id' : newId(),
       'name' : document.getElementById('add-project-input').value,
       'tasks' : {}
-  }
+  };
   
   if(typeof ttData.clients[current_client.id].projects != "object"){
     ttData.clients[current_client.id].projects = {};
@@ -345,7 +345,7 @@ function saveNewTask(){
     'name' : task_name,
     'status' : 'new',
     'sessions' : {}  
-  }
+  };
   
   if(gebi("billable-input").checked == true){  
     new_task.isBillable = true;  
@@ -358,7 +358,7 @@ function saveNewTask(){
   ttSave();   
   updateSelectOptionsFromData('task');  
   updateSectionFromData('task');   
-  setTask(new_task.id)   
+  setTask(new_task.id);   
   input.value = '';
   
 }
@@ -376,7 +376,7 @@ function startSession(){
   current_session = {
     'id' : newId(),
     'start_time' : startDate.format("YYYY-MM-DD hh:mm:ss"),  
-  }
+  };
   
   updateDataObject('session',current_session);   
   counterId = setInterval(incrementCurrentDuration, 1000);   
@@ -405,7 +405,7 @@ function endSession(){
 
   clearInterval(counterId);                                      
     
-  current_session.end_time = moment().format("YYYY-MM-DD hh:mm:ss"), 
+  current_session.end_time = moment().format("YYYY-MM-DD hh:mm:ss"); 
   
   current_session.notes = $("#session-notes-input").val();
   
@@ -464,7 +464,7 @@ function desktopNotify(message,title,icon) {
   options = {
       body: message,
       icon: icon
-  }
+  };
   new Notification(title,options);
 }
 
@@ -524,7 +524,7 @@ function gebi(id){
 }
 
 
-function pad(n){return n<10 ? '0'+n : n}
+function pad(n){return n<10 ? '0'+n : n;}
 
 
 
@@ -630,7 +630,7 @@ function updateSelectOptionsFromData(type,idSuffix){
     } 
           
           
-    select_element = document.getElementById(type+'-select'+idSuffix)
+    select_element = document.getElementById(type+'-select'+idSuffix);
           
     updateSelectOptions(select_element,options);
     
@@ -820,11 +820,11 @@ function ttSaveCurrent(){
             
             
           }else{
-            dbg('No current task, but project and client')
+            dbg('No current task, but project and client');
           }
       
       }else{
-        dbg('Client but no project found')
+        dbg('Client but no project found');
       }
     
   }else{
@@ -878,7 +878,7 @@ function saveJson(){
       input_data = JSON.parse(input_json);
    }catch(err){
       setFeedback('Oops! JSON input is invalid. Error: '+err,'error');
-      return
+      return;
    }
      
    ttData = input_data;  
@@ -932,7 +932,7 @@ function saveEditForm(type){
 
 function deleteFromEditForm(type){
 
-  dbg(type,'Deleting type:')
+  dbg(type,'Deleting type:');
 
   if(type == 'client'){
     delete ttData.clients[current_client.id];
@@ -953,7 +953,7 @@ function deleteFromEditForm(type){
   }else if(type == 'task'){
   
     delete current_project.tasks[current_task.id]; 
-    current_task = ''    
+    current_task = '';    
     update_type = 'project';    
     update_data = current_project;
     
@@ -1140,20 +1140,20 @@ function nodeRequest(direction){
 
   var request = http.request(options, function(result){
   
-    console.log(`STATUS: ${result.statusCode}`);
-    console.log(`HEADERS: ${JSON.stringify(result.headers)}`);
+    console.log('STATUS:'+result.statusCode);
+    console.log('HEADERS:'+JSON.stringify(result.headers));
     
     result.setEncoding('utf8');
     
     var resultData = '';
     
     result.on('data', function(chunk){
-      console.log(`BODY: ${chunk}`);
+      console.log('BODY:'+chunk);
       resultData += chunk;
     });
     
     result.on('end', function(){
-      console.log('No more data in response.')
+      console.log('No more data in response.');
       console.log(result);     
       console.log(resultData);
       
@@ -1182,12 +1182,12 @@ function nodeRequest(direction){
       }
       
       
-    })
+    });
     
   });
 
   request.on('error', function(e){
-    console.log(`problem with request: ${e.message}`);
+    console.log('problem with request:'+e.message);
     setFeedback('Error synching to server: '+e.message);
   });
 
@@ -1281,8 +1281,8 @@ function showProjectTime(projectId){
             }else{
               duration = 0;
             }            
-            taskTotalTime += duration 
-            taskSessionCount += 1      
+            taskTotalTime += duration; 
+            taskSessionCount += 1;      
           }
           
         
@@ -1355,9 +1355,9 @@ function makeSelectOptions(itemsObj,isForVue,prepend){
      if(getMemberCount(itemsObj) > 0){
       for (id in itemsObj){
         if(isForVue){
-          option = {text:itemsObj[id].name,value:id}
+          option = {text:itemsObj[id].name,value:id};
         }else{
-          option = [id,itemsObj[id].name]
+          option = [id,itemsObj[id].name];
         }
            
         options.push(option);
@@ -1384,16 +1384,24 @@ function setView(view){
     gebi("organize-view").style.display = "none"; 
     gebi("analyze-view").style.display = "block";
     
-    var tableFields = {client:"Client",project:"Project",task:"Task",start_time:"Start Time",duration:"Duration"}
+    var tableFields = {
+      client:"Client",
+      project:"Project",
+      task:"Task",
+      start_time:"Start Time",
+      duration:"Duration"
+    };
     
     //addTableHeaders('datatable',tableFields);   
             
     analyzeView = '';
     
+    var clientFilterSelVal;
+    
     if(typeof current_client == "object"){
-      var clientFilterSelVal = current_client.id;
+      clientFilterSelVal = current_client.id;
     }else{
-      var clientFilterSelVal = "all";
+      clientFilterSelVal = "all";
     }
      
     var analyzeView = new Vue({
@@ -1466,7 +1474,7 @@ function setView(view){
              document.getElementById("no-data-found-table").style.display = "none";           
            } 
            
-           console.log(analyzeView.tableData)            
+           console.log(analyzeView.tableData);            
         
         }     
       }      
@@ -1487,7 +1495,7 @@ function setView(view){
         
         analyzeView.filter();    
         
-    })    
+    });    
       
     analyzeView.$watch('project_select.value', function (newVal, oldVal) {
     
@@ -1495,7 +1503,7 @@ function setView(view){
         
         analyzeView.filter();  
         
-    })
+    });
    
         
     startPicker = new Pikaday({
@@ -1529,4 +1537,3 @@ function setView(view){
   }  
   
 }
-
