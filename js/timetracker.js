@@ -26,6 +26,8 @@ var defaultSettings = {
 
 var reminderDelay = 0;
 
+var types = ['user','client','project','task','session'];
+
 var editFields = {
 
   client : {
@@ -348,9 +350,9 @@ function saveNewTask(){
   };
   
   if(gebi("billable-input").checked == true){  
-    new_task.isBillable = true;  
+    new_task.billable = true;  
   }else{  
-    new_task.isBillable = false;   
+    new_task.billable = false;   
   }   
   
   current_task = new_task; 
@@ -375,7 +377,7 @@ function startSession(){
   
   current_session = {
     'id' : newId(),
-    'start_time' : startDate.format("YYYY-MM-DD hh:mm:ss"),  
+    'start_time' : startDate.format("YYYY-MM-DD HH:mm:ss"),  
   };
   
   updateDataObject('session',current_session);   
@@ -405,7 +407,7 @@ function endSession(){
 
   clearInterval(counterId);                                      
     
-  current_session.end_time = moment().format("YYYY-MM-DD hh:mm:ss"); 
+  current_session.end_time = moment().format("YYYY-MM-DD HH:mm:ss"); 
   
   current_session.notes = $("#session-notes-input").val();
   
@@ -645,7 +647,7 @@ function updateSelectOptionsFromData(type,idSuffix){
 
 // I think the following seven functions should be removed. They attempt to be too abstract, and fail
 
-var types = ['user','client','project','task','session'];
+
 
 function parentObjectOfCurrent(type){
   if(type == 'client'){
@@ -1231,7 +1233,7 @@ function makeFlatData(){
                   "project_id" : project_id,
                   "task" : tasks[task_id].name,           
                   "task_id" : task_id,
-                  "isBillable" : tasks[task_id].isBillable,
+                  "billable" : tasks[task_id].billable,
                   "start_time" :  session.start_time, 
                   "end_time" :  session.end_time,
                   "duration" : timeDiffSecsFromString(session.start_time,session.end_time), 
@@ -1287,7 +1289,7 @@ function showProjectTime(projectId){
           
         
        
-          if(task.isBillable == true){
+          if(task.billable == true){
              prj.totalBillableTime += taskTotalTime;
           }
           
@@ -1457,7 +1459,7 @@ function setView(view){
              
              totalTime += flatData[row].duration;
              
-             if(flatData[row].isBillable){
+             if(flatData[row].billable){
                 totalBillableTime += flatData[row].duration;
              }
                    
