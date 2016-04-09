@@ -6,13 +6,16 @@
     
     <link rel="stylesheet" href="css/timetracker.css" type="text/css"> 
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css"> 
-    <link rel="stylesheet" href="css/pikaday.css">
+    <link rel="stylesheet" href="css/pikaday.css">                                                           
+    <link rel="stylesheet" href="css/jqtree.css">                                                            
+    <link rel="stylesheet" href="css/rating.min.css">
 
     <script type="text/javascript" src="js/jquery-1.6.4.min.js"></script>
-    <script type="text/javascript" src="js/timetracker.js"></script>
     <script type="text/javascript" src="js/vue.js"></script>   
     <script type="text/javascript" src="js/moment.min.js"></script>   
-    <script type="text/javascript" src="js/pikaday.js"></script> 
+    <script type="text/javascript" src="js/pikaday.js"></script>    
+    <script type="text/javascript" src="js/tree.jquery.js"></script> 
+    <script type="text/javascript" src="js/timetracker.js"></script> 
         
     <title>Timetracker</title>
   </head>
@@ -23,7 +26,9 @@
       <a href="#void" class="view-switch" onClick="setView('track')"><i class="fa fa-clock-o fa-lg"></i>
 Track</a>
       <a href="#void" class="view-switch" onClick="setView('analyze')"><i class="fa fa-bar-chart fa-lg"></i>
-Analyze</a>      
+Analyze</a>  
+      <a href="#void" class="view-switch" onClick="setView('organize')"><i class="fa fa-tasks fa-lg"></i>
+Organize</a>     
       <a href="javascript:void(0)" class="view-switch" id="settings-button" title="Settings" onClick="showEditForm('settings')"><i class="fa fa-wrench fa-lg"></i></a>
       
       </div>
@@ -148,10 +153,66 @@ Analyze</a>
       
       </div>
       
-      <div id="organize-view">
+      <div id="organize-view" style="display: none">
 
-         <table class="datatable" id="datatable"></table>
-      
+         <h3 id="organize-view-title"></h3>
+         <div id="organize-controls">
+           
+           <select v-model="client_select.value">
+             <option v-for="option in client_select.options" v-bind:value="option.value">
+              {{ option.text }}
+             </option>
+           </select>
+           
+           <select v-model="project_select.value">
+             <option v-for="option in project_select.options" v-bind:value="option.value">
+              {{ option.text }}
+             </option>
+           </select>
+           
+           <div>
+             
+             <select id="sort-by" v-model="sortBy"  onChange="organizeView.sort(this.value);">
+              <option value="name" selected>Sort by: name</option>       
+              <option value="priority" >Sort by: priority</option>        
+              <option value="status" >Sort by: status</option>            
+              <option value="time" >Sort by: time</option>   
+             </select>                    
+             <input type="checkbox" id="hide-completed" v-model="hideCompletedTasks"  v-on:change="filter">
+             <label for="hide-completed">Hide completed</label>
+           </div>
+         
+         
+         </div>
+         
+         <div id="task-list">
+            <div v-if="client_select.value != 'all' && project_select.value != 'all'"  >
+              
+              <form method="post" id="task-form" action="">
+                <input type="text" v-model="newTaskName" id="new-task-input" name="new-task-input" placeholder="New task" /><a href="#void" v-on:click="saveNewTask" class="button" id="save-new-task-button">Save</a>
+                      
+              </form>
+            </div>
+              <div v-for="task in tasks">
+                  <div class="task {{task.status}}" style="display:flex;" onDblClick="showGeneralEditForm('task','{{task.id}}')">
+                    <div style="width: 80%; flex: 1">
+                    {{task.name}} <span class="task-meta">{{task.displayStatus}} <span v-if="task.prettyTime">| {{task.prettyTime}}</span> <span v-if="task.billable == 'true'" class="fa-stack" style="font-size: 0.6em;" ><i class="fa fa-circle fa-2x fa-stack-2x"></i><i class="fa fa-usd fa-lg fa-stack-1x fa-inverse"></i></span> </span> 
+                    </div>
+                    <div style="width: 20px; flex:0.05; font-size: 1.2em; margin-top: 2px;">
+                      <i onClick="startGeneralSession('{{task.id}}')" style="cursor:pointer; color:#77aa88;" class="fa fa-play-circle fa-lg"></i>
+                    </div>
+                  </div>
+                   
+              </div>                                
+              <div><ul class="c-rating"></ul></div>
+              <div id="no-data-found" style="display: none;">                                                                          
+                <div colspan="5" style="font-size: 1.5em; color: #aaa; text-align:center">No data to display</div>
+              </div>  
+         </div>                                                                                                            
+         
+         <div id="task-tree">
+         
+         </div>
       </div>      
       
       
@@ -176,5 +237,56 @@ Analyze</a>
     
     </div>
     </div>
+    
+    
+    <script type="text/javascript" src="js/rating.js"></script>  
+    <script type="text/javascript">
+  /*     
+    var callback = function(rating) { alert(rating); };
+    
+    var ratingElements = document.getElementsByClassName('c-rating');
+                                                                      
+    var taskElements = document.getElementsByClassName('task');
+    
+    for (var eleId in taskElements){
+      var ratingEle = document.createElement('ul');
+      ratingEle.classList.add('c-rating');
+ 
+ 
+      
+      taskElements[eleId].appendChild(ratingEle)
+      
+ 
+      r = rating(ratingEle,2,5,callback); 
+    }       
+    
+    for (var eleId in ratingElements){ 
+      r = rating(ratingElements[eleId],2,5,callback); 
+    }   
+    
+    
+   Star ratings 
+    
+    // target element
+    var ratingElements = document.getElementsByClassName('c-rating');
+
+    for (var eleId in ratingElements){ 
+      // current rating, or initial rating
+      var currentRating = 0;
+      
+      // max rating, i.e. number of stars you want
+      var maxRating= 5;
+      
+      // callback to run after setting the rating
+      var callback = function(rating) { alert(rating); };
+      
+      // rating instance
+      r = rating(ratingElements[eleId], currentRating, maxRating, callback);
+      
+    
+    }
+    */
+    
+    </script>
   </body>
 </html>                                                        

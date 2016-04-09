@@ -72,21 +72,39 @@ form{
   padding: 0;
 }
 
-input[type=text], select{  
+input[type=text], select, textarea{  
   font-size: 1rem;
   padding: 3 10 3 10px;
   border: 1px solid #bbbbbb;
-  margin: 10px;
+  margin-top: 10px;    
+  margin-bottom: 10px;
+  margin-left:2%;
+  margin-right:2%;
   background-color: #fbfbfb;
   display: inline-block;
   color: #333333;
-  width: 250px;
+  width: 45%;
+  
+}
+      
+#edit-popup input,#edit-popup select,#edit-popup textarea{
+  width: 60%;
+}      
+      
+@media only screen and (max-width: 500px) {
+   input[type=text], select, textarea{
+     width: 100%;
+   }
 }
 
 input[type=checkbox]{
   margin: 10px;
 }
-                                                          
+  
+#edit-popup{
+  text-align:right;
+}
+                                                    
 
 
 .section-title{  
@@ -225,3 +243,31 @@ a.current-view{
 color: #000;
 
 }
+
+#organize-view .task{
+  padding: 7px 10px 7px 10px;
+  margin: 5px 0px 5px 0px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+#organize-view .task:hover{
+  background-color: #eef;
+}
+
+#organize-view .Completed{
+  color: #999;
+}
+
+#task-list{
+  margin-top: 30px;
+}
+
+.task-meta{
+  font-size: 0.8em;
+  color: #777;
+  display: inline-block;
+  margin-left: 20px;
+}
+
+
