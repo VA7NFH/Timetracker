@@ -18,6 +18,7 @@ var view = "track";
 var defaultSettings = {
   top_level_title : "Client",
   show_billability : true,
+  auto_synch : true,
   reminder_interval : false,
   reminder_title : "Pomodoro Complete!",
   reminder_message : "Please take a five minute break. <b>Breathe, stretch, look around!</b>",
@@ -475,7 +476,7 @@ function endSession(){
   current_session.notes = $("#session-notes-input").val();
   
   if(document.getElementById("task-complete-input").checked == true){
-    current_task.status = "Completed";   
+    current_task.status = "completed";   
     task_complete_feedback = " <b>Task complete!<b>";
     feedback_class = "success";    
     updateSelectOptionsFromData('task');    
@@ -498,6 +499,14 @@ function endSession(){
   document.title = "Timetracker";  
   edit_button = '<form style="display:inline"><input type="hidden" id="session_id-input" value="'+pastSessionId+'"/><a class="button" onClick="showEditForm(\'session\')">Edit session</a></form>';  
   setFeedback("Session Ended. Duration was "+currentDuration+task_complete_feedback+edit_button,feedback_class);
+  
+  dbg("In session end.");
+  
+  dbg("Auto synch settings",getSetting("auto_synch"));
+  
+  if(getSetting("auto_synch") == "true"){
+    synchToServer();
+  }
 
 }
 
@@ -1148,7 +1157,7 @@ function deleteFromEditForm(type){
 /* Edit form that doesn't require current values to be set */
 
 function showGeneralEditForm(type,id){
-   dbg('showEditForm called with type',type); 
+   dbg('showGeneralEditForm called with type',type); 
    dbg('id',id);
    
    edit_element = document.getElementById("edit-popup");
@@ -1817,8 +1826,18 @@ function setView(view){
             
             saveNewTask : function(){
                saveNewTask(organizeView.project_select.value,organizeView.newTaskName);
+               organizeView.newTaskName = '';
                organizeView.filter();            
-            },
+            },  
+             
+            /* 
+            saveNewProject : function(){
+               saveNewTask(organizeView.project_select.value,organizeView.newTaskName);
+               organizeView.newTaskName = '';
+               organizeView.filter();            
+            }, 
+            */
+            
                     
             filter : function (){
             
