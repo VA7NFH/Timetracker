@@ -33,71 +33,62 @@ Analyze</a>
       
 
     </div>
-    <br clear="both">
+    <div class="clearfix"></div>
     
     <div id="container">
       <div id="feedback" class="notice" style="display:none">
                                                 
       </div>
-       
-
-        <!-- Client controls -->
-        <div class="control-container rounded" id="client-controls">
-          <div class="control-title-container"><div class="control-title">Client</div></div> 
-    
-          <form method="post" id="client-form" action="" ondblclick="addClientForm()">     
-            <div id="add-client-form" style="display:none;">
-                  <input type="text" id="add-client-input" placeholder="New client name"/>
-                  <a href="#void" class="button" title="Save" onClick="saveClient()"><i class="fa fa-floppy-o" aria-hidden="true"></i></a>
-                  <a href="#void" class="button" title="Cancel" onClick="cancelAddClient()"><i class="fa fa-times" aria-hidden="true"></i>
-</a>
-            </div> 
-                 
-            <div id="select-client-form" style="display:block;">
-            <select name="client_id" id="client-select" onchange="setClient()">
-                  <option value="">Select client... </option>
-                  
-            </select>
-            <a href="#void" class="button edit" title="Edit" onClick="showEditForm('client')"><i class="fa fa-pencil" aria-hidden="true"></i>
-</a><a href="#void" class="button" onClick="addClientForm()"><i class="fa fa-plus" aria-hidden="true"></i>
-</a>
-            </div>
-          </form>
-        </div>
-        
-        <!-- Project controls -->
-        <div class="control-container rounded" id="project-controls" style="display:none;">
-          <div class="control-title-container"><div class="control-title">Project</div></div> 
-          <form method="post" id="project-form" action="">
-          
-            <div id="add-project-form" style="display:none;">
-                <input type="text" id="add-project-input" placeholder="New project name"/>
-                <a href="#void" class="button" onClick="saveProject()"><i class="fa fa-floppy-o" aria-hidden="true"></i></a>
-                <a href="#void" class="button" onClick="cancelAddProject()"><i class="fa fa-times" aria-hidden="true"></i></a>
-            </div> 
-               
-            <div id="select-project-form" style="display:block;">     
-              <select name="project_id" id="project-select" onchange="setProject()">
-                    <option value="testval" style="color: #aaaaaa">Select project... </option>
+        <div id="client-project-controls">
+          <!-- Client controls -->
+          <div class="control-container rounded" id="client-controls">
+            <div class="control-title-container"><div class="control-title">Client/Category</div></div> 
+      
+            <form method="post" id="client-form" action="" ondblclick="addClientForm()">     
+              <div id="add-client-form" style="display:none;">
+                    <input type="text" id="add-client-input" placeholder="New client name"/>
+                    <a href="#void" class="button" title="Save" onClick="saveClient()"><i class="fa fa-floppy-o" aria-hidden="true"></i></a>
+                    <a href="#void" class="button" title="Cancel" onClick="cancelAddClient()"><i class="fa fa-times" aria-hidden="true"></i>
+  </a>
+              </div> 
+                   
+              <div id="select-client-form" style="display:block;">
+              <select name="client_id" id="client-select" onchange="setClient()">
+                    <option value="all">- All Clients -</option>
+                    
               </select>
-              <a href="#void" class="button edit" id="edit-project-button" onClick="showEditForm('project')" style="display:none;"><i class="fa fa-pencil" aria-hidden="true"></i></a><a href="#void" class="button" onClick="addProjectForm()"><i class="fa fa-plus" aria-hidden="true"></i></a>
-            </div>
-          </form>                                
+              <a href="#void" class="button edit" title="Edit" onClick="showEditForm('client')"><i class="fa fa-pencil" aria-hidden="true"></i>
+  </a><a href="#void" class="button" onClick="addClientForm()"><i class="fa fa-plus" aria-hidden="true"></i>
+  </a>
+              </div>
+            </form>
+          </div>
+          
+          <!-- Project controls -->
+          <div class="control-container rounded" id="project-controls" style="display:none;">
+            <div class="control-title-container"><div class="control-title">Project</div></div> 
+            <form method="post" id="project-form" action="">
+            
+              <div id="add-project-form" style="display:none;">
+                  <input type="text" id="add-project-input" placeholder="New project name"/>
+                  <a href="#void" class="button" onClick="saveProject()"><i class="fa fa-floppy-o" aria-hidden="true"></i></a>
+                  <a href="#void" class="button" onClick="cancelAddProject()"><i class="fa fa-times" aria-hidden="true"></i></a>
+              </div> 
+                 
+              <div id="select-project-form" style="display:block;">     
+                <select name="project_id" id="project-select" onchange="setProject()">
+                      <option value="all" style="color: #aaaaaa"> - All Projects - </option>
+                </select>
+                <a href="#void" class="button edit" id="edit-project-button" onClick="showEditForm('project')" style="display:none;"><i class="fa fa-pencil" aria-hidden="true"></i></a><a href="#void" class="button" onClick="addProjectForm()"><i class="fa fa-plus" aria-hidden="true"></i></a>
+              </div>
+            </form>                                
+          </div>
         </div>
         
       <div class="clearfix"></div>
       
       <div id="taskList-view" class="view-container">     
-           <div>             
-             <select id="sort-by" onChange="taskList.sort(this.value);">
-              <option value="name" selected>Sort by: name</option>       
-              <option value="priority" >Sort by: priority</option>        
-              <option value="status" >Sort by: status</option>            
-              <option value="time" >Sort by: time</option>   
-             </select>                    
-             <input type="checkbox" id="hide-completed" onChange="taskList.hideCompleted()">
-             <label for="hide-completed">Hide completed</label>
-           </div>
+
          
            <div id="task-list" style="display:none">
                 <div id="tasklist-new-task-form">
@@ -114,7 +105,7 @@ Analyze</a>
                     <div class="task {{task.status}}" style="display:flex;" onDblClick="showGeneralEditForm('task','{{task.id}}')">
                       <div style="width: 80%; flex: 1">
                      
-                      {{task.name}} <span class="task-meta">{{task.displayStatus}} <span v-if="task.prettyTime">| {{task.prettyTime}}</span> <span v-if="task.billable == 'true'" class="fa-stack" style="font-size: 0.6em;" ><i class="fa fa-circle fa-2x fa-stack-2x"></i><i class="fa fa-usd fa-lg fa-stack-1x fa-inverse"></i></span> </span> 
+                      {{checkCompleted}} {{task.name}} <span class="task-meta">{{task.displayStatus}} {{metaSeparator}} {{task.prettyTime}}</span> <span class="fa-stack" style="font-size: 0.6em;" class="billability" ><i class="fa fa-circle fa-2x fa-stack-2x"></i><i class="fa fa-usd fa-lg fa-stack-1x fa-inverse"></i></span> </span> 
                       </div>
                       <div style="width: 20px; flex:0.05; font-size: 1.2em; margin-top: 2px;">
                         <i onClick="startGeneralSession('{{task.id}}')" style="cursor:pointer; color:#77aa88;" class="fa fa-play-circle fa-lg"></i>
@@ -127,7 +118,16 @@ Analyze</a>
                   <div colspan="5" style="font-size: 1.5em; color: #aaa; text-align:center">No data to display</div>
                 </div>  
            </div>  
-                  
+           <div id="taskList-options">
+             Sort by: <a href="#void" onClick="taskList.sort('name')">name</a> | <a href="#void" onClick="taskList.sort('priority')">priority</a> | <a href="#void" onClick="taskList.sort('status')">status</a> | <a href="#void" onClick="taskList.sort('time')">time</a>             
+             <!-- select id="sort-by" onChange="taskList.sort(this.value);">
+              <option value="name" selected>Sort by: name</option>       
+              <option value="priority" >Sort by: priority</option>        
+              <option value="status" >Sort by: status</option>            
+              <option value="time" >Sort by: time</option>   
+             </select -->                    
+             <input type="checkbox" id="hide-completed" onChange="taskList.hideCompleted()" checked><label for="hide-completed">Hide completed</label>
+           </div>       
          
          </div>
          

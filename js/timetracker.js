@@ -273,46 +273,59 @@ function setClient(clientId){
   
   if(clientId){     
     client_select.value = clientId;  
+  }else{
+    clientId = client_select.value;
   }
   
-  current_client = ttData.clients[client_select.value];
+  dbg("Client ID in setClient()",clientId);
+          
+  delete taskList.projectFilter;
   
-  current_project = '';  
+  if(clientId == "all"){
+                                         
+    delete taskList.clientFilter;
+    current_client = null;
+    
+    gebi('project-controls').style.display = "none"; 
+    
+  }else{
   
-  $("#edit-project-button").hide();
+    
+    gebi('project-controls').style.display = "block"; 
   
-  // Count how many projects this client has
-  project_count = 0;
-  
-  if(typeof current_client.projects == "object"){
-    for(project_id in current_client.projects){
-       project_count += 1;
+    current_client = ttData.clients[client_select.value];
+    
+    current_project = '';  
+    
+    $("#edit-project-button").hide();
+    
+    // Count how many projects this client has
+    project_count = 0;
+    
+    if(typeof current_client.projects == "object"){
+      for(project_id in current_client.projects){
+         project_count += 1;
+      }
     }
-  }
+  
+    if(project_count > 0){
+      updateSelectOptionsFromData('project');
+      cancelAddProject();
+    }else{
+      addProjectForm();
+      updateSelectOptionsFromData('project');
+    }
+    
+    $('#project-controls').show();
+  
 
-  if(project_count > 0){
-    updateSelectOptionsFromData('project');
-    cancelAddProject();
-  }else{
-    addProjectForm();
-    updateSelectOptionsFromData('project');
-  }
-  
-  $('#project-controls').show();
-                                   
-  delete taskList.projectFilter; 
-  
-  if(client_select.value == "all"){        
-      //project_select.options = [{text:"- All projects -",value:"all"}];
-      delete taskList.clientFilter;       
-  }else{
-      //project_select.options = makeSelectOptions(ttData.clients[newVal].projects,true,{text:"- All projects -",value:"all"});             
-      taskList.clientFilter = {
-        type : "client",
-        field : "id",
-        condition : "equals",
-        value : current_client.id
-      };
+    //project_select.options = makeSelectOptions(ttData.clients[newVal].projects,true,{text:"- All projects -",value:"all"});             
+    taskList.clientFilter = {
+      type : "client",
+      field : "id",
+      condition : "equals",
+      value : current_client.id
+    };
       
   }
   //project_select.value = 'all';     
@@ -325,6 +338,8 @@ function setClient(clientId){
   if(currentView.setClient){
     currentView.setClient(clientId);
   }
+  
+  emitEvent("client","set");
                                              
   //document.getElementById('task-controls').style.display = "none";
   
@@ -389,7 +404,6 @@ function setProject(id){
   if(project_select.value != 'all' && project_select.value != ''){  
    
     $("#edit-project-button").show();
-
   
     //if(project_select[0].value == ''){
     //  project_select.remove(0);
@@ -458,9 +472,6 @@ function saveNewTask(projectId,task_name){
     var taskSaveTimeObj = new Date();
     var taskSaveTime = (taskSaveTimeObj.getSeconds()*1000)+taskSaveTimeObj.getMilliseconds();
     
-    dbg("tst:",taskSaveTime); 
-    dbg("ltst:",lastTaskSaveTime);
-    
     if((taskSaveTime - lastTaskSaveTime) < 500){
       dbg("ltst:",lastTaskSaveTime);
       startGeneralSession(lastTaskSaveId);
@@ -524,19 +535,33 @@ function saveNewTask(projectId,task_name){
   ttSave();   
   //updateSelectOptionsFromData('task');  
   //updateSectionFromData('task');
-  
-  taskList.filter();  
-  taskList.update();
      
   setTask(new_task.id); 
   
   lastTaskSaveTime = taskSaveTime; 
   lastTaskSaveId = new_task.id; 
   
+  emitEvent("task","added");
+  
   return new_task.id;
    
 }
 
+function setTaskComplete(task_id,element){
+
+  task = getItemById("task",task_id);
+  
+  if(task.status == "completed"){
+    task.status = "inProcess";
+  }else{
+    task.status = "completed"; 
+  }   
+  
+  updateItemById("task",task_id,task);
+
+  emitEvent("task","updated");
+
+}
 
 
 
@@ -826,7 +851,7 @@ function updateSelectOptionsFromData(type,idSuffix){
     
     
     if(!setToCurrent){
-      options.unshift(['','Select '+type+'...']);
+      options.unshift(['all','Select '+type+'...']);
     } 
           
           
@@ -1135,29 +1160,39 @@ function saveGeneralEditForm(type,id){
   }else{
     var item = getItemById(type,id)
   }
- 
+  
+  /* 
   for (key in properties){                                                                 
     if(typeof properties[key] != "object"){
       dbg("getting props for",key);
+      
       if(document.getElementById(type+"-"+key+"-edit-input")){
         item[key] = document.getElementById(type+"-"+key+"-edit-input").value;         
       }   
     }
   }
-   /*
-  var itemWeird = getItemById(type,id);
+  */ 
+   
   
-  var item =  JSON.parse(JSON.stringify(item));
+  // var item =  JSON.parse(JSON.stringify(item));
+                                        
+  dbg("Type in edit",type);                   
+  dbg("ID in edit",id); 
   
-  dbg("Item in save before edit",item);
+  dbg("Item in save before edit",item);  
+  dbg("editFields",editFields[type]);
   
-  for (key in editFields.type){
-    item[key] = document.getElementById(type+"-"+key+"-edit-input").value;
+  for (key in editFields[type]){
+    if(document.getElementById(type+"-"+key+"-edit-input")){
+      item[key] = document.getElementById(type+"-"+key+"-edit-input").value;
+    }else{
+      dbg("Field not found in edit form:",key);
+    }
   }        
-    */       
+      
     
                     
-  dbg("Item in save after edit",JSON.stringify(item));
+  dbg("Item in save after edit",item);
   
   /* This is excessively lame, and is only here because of issues with Vue.js... */
   if(type == "task"){
@@ -1181,50 +1216,22 @@ function saveGeneralEditForm(type,id){
 
 function deleteGeneralFromEditForm(type,id){
 
-  dbg(type,'Deleting type:');
+  dbg('deleteGeneralFromEditForm() with:',[type,id]); 
 
-  if(type == 'client'){
-    delete ttData.clients[id];
-    
-    current_client = '';
-    current_project = ''; 
-    current_task = '';
-    $("#task-controls").hide(); 
-    $("#project-controls").hide();
-           
-  }else if(type == 'project'){
-  
-    delete current_client.projects[current_project.id];
-    current_project = '';          
-    update_type = 'client'; 
-    update_data = current_client;
-    
-  }else if(type == 'task'){
-  
-    delete current_project.tasks[current_task.id]; 
-    current_task = '';    
-    update_type = 'project';    
-    update_data = current_project;
-    
-  }else if(type == 'session'){
-    session_id = $("#session_id-input").value;
-    delete current_task.sessions[session_id];      
-    update_type = 'task';
-    update_data = current_task;
-  }
-  
-  if(type != 'client'){
-    updateDataObject(update_type,update_data);   
-  }
+  deleteItemById(type,id);
    
   if(type != "session" && type != "task"){
     updateSelectOptionsFromData(type);   
   }
-
    
   ttSave(); 
   cancelEditForm(); 
+  
   setFeedback(type+' deleted.');
+  
+  // Temporary test mockup of event-based strategy...
+  
+  emitEvent("task","deleted"); 
   
 } 
 
@@ -1352,7 +1359,7 @@ function showGeneralEditForm(type,id){
   $("#edit-popup").append('<a class="button" onClick="cancelEditForm()">Cancel</a>');
   
   if(type != "settings"){
-    $("#edit-popup").append('<a class="button red" onClick="deleteFromEditForm(\''+type+'\')">Delete Item</a></div></form>');
+    $("#edit-popup").append('<a class="button red" onClick="deleteGeneralFromEditForm(\''+type+'\',\''+id+'\')">Delete Item</a></div></form>');
   }  
   
   $("#modal-bg").show(); 
@@ -2084,9 +2091,6 @@ taskList.filter = function(field){
   filterTaskList(field);
 };
 
-taskList.update = function(){
-  updateTaskList();
-};  
 
 taskList.hideNewTaskForm = function(){
   gebi("task-form").style.display = "none";
@@ -2117,7 +2121,7 @@ function sortTaskList(field){
    taskList.update();                     
 }
 
-function updateTaskList(){ 
+taskList.update = function(){ 
 
    dbg("Updating DOM with "+taskList.tasks.length.toString()+" tasks");
                                                      
@@ -2149,7 +2153,26 @@ function updateTaskList(){
               
        for (taskKey in task){ 
           templateData.push({placeholder: "{{task."+taskKey+"}}", value: task[taskKey]});     
-       }        
+       }
+       
+       if(task.status == "completed"){       
+         var completedFlag = "checked";       
+       }else{    
+         var completedFlag = "";       
+       }
+       
+       var completedInput = "<input type=\"checkbox\" name=\"task-completed\" "+completedFlag+" onClick=\"setTaskComplete('"+task.id+"')\"/>";
+       
+       templateData.push({placeholder:"{{checkCompleted}}",value: completedInput});  
+       
+       
+       if(task.prettyTime){       
+         var metaSeparator = "|";       
+       }else{    
+         var metaSeparator = "";       
+       }
+              
+       templateData.push({placeholder:"{{metaSeparator}}",value: metaSeparator});      
             
        var taskEl = templateEl.cloneNode(false);
        taskEl.id = "task-"+task.id;
@@ -2266,7 +2289,7 @@ analyze.show = function(){
 
        
     if(!analyze.startPicker){   
-    analyze.startPicker = new Pikaday({
+      analyze.startPicker = new Pikaday({
           field: document.getElementById('filter-start-time'),
           format: 'YYYY-MM-DD',
           onSelect: function() {
@@ -2307,7 +2330,12 @@ analyze.filter = function (){
    tempTableData = [];
    
    totalTime = 0;
-   totalBillableTime = 0;
+   totalBillableTime = 0;  
+   
+   var projectTotal = 0; 
+   var lastProjectId = 0;
+   var clientTotal = 0; 
+   var lastClientId = 0;
    
    for (row in flatData){          
    
@@ -2315,9 +2343,28 @@ analyze.filter = function (){
      if (fs.projectId != "all" && flatData[row].project_id != fs.projectId){ continue; }
      //if (fs.taskId != "all"  && flatData[row].task_id != fs.taskId){ continue; }     
      if (fs.startTime != "all" && flatData[row].start_time < fs.startTime){ continue; }      
-     if (fs.endTime && flatData[row].end_time > fs.endTime){ continue; } 
+     if (fs.endTime && flatData[row].end_time > fs.endTime){ continue; }
+     
+     clientTotal += flatData[row].duration;
+      
+     if(flatData[row].client_id != lastClientId){ 
+       dbg("New client detected");
+       clientTotalRow = {client: flatData[row].client,project:"",task:"",start_time:"",durationHMS:timeFromSeconds(clientTotal)};
+       clientTotal = 0;
+       lastClientId = flatData[row].client_id;                                              
+       tempTableData.push(clientTotalRow);
+     }
+          
+     projectTotal += flatData[row].duration;
+      
+     if(flatData[row].project_id != lastProjectId){
+       dbg("New project detected");
+       projectTotalRow = {client: flatData[row].client,project:flatData[row].project,task:"",start_time:"",durationHMS:timeFromSeconds(projectTotal)};
+       projectTotal = 0;
+       lastProjectId = flatData[row].project_id;                                               
+       tempTableData.push(projectTotalRow);
+     }
                                                                                     
-
      tempTableData.push(flatData[row]);
      
      totalTime += flatData[row].duration;
@@ -2442,6 +2489,32 @@ makeFormInput = function selfMakeFormInput (type,attribs){
        
   dbg("Input after setting attributes",input);
   return input;
+}
+
+
+function emitEvent(type,action){
+  if(type == "task"){
+    if(action == "deleted" || action == "edited" || action == "added" || action == "updated" ){
+      if(typeof currentView.filter == "function"){
+         currentView.filter();
+      }
+      if(typeof currentView.update == "function"){
+         currentView.update();
+      }      
+      
+    }    
+  }else if(type == "client"){
+    if(action == "set"){
+      setProject("all");
+      if(typeof currentView.filter == "function"){
+         currentView.filter();
+      }
+      if(typeof currentView.update == "function"){
+         currentView.update();
+      } 
+    
+    }
+  }
 }
 
 
