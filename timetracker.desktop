@@ -4,7 +4,7 @@ Comment=PSC Timetracker app
 Exec=webapp-container --store-session-cookies --webappUrlPatterns=https?://photosynth.ca/* http://photosynth.ca/timetracker/timetracker.html %u
 GenericName[en_US]= TimeTracker
 GenericName= TimeTracker
-Icon=~/.local/share/applications/timetracker-icon.png
+Icon=/home/.local/share/applications/timetracker-icon.png
 MimeType=
 Name=TimeTracker
 Path=
