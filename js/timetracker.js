@@ -229,7 +229,9 @@ function ttInit(){
      
    });
    
-
+   $('.modal-bg').on('click',function(e){
+      cancelEditForm();
+   });
    
 }
 
@@ -1307,10 +1309,11 @@ function showGeneralEditForm(type,id){
     }
     
     if(field.type == "text"){
-         $("#edit-popup").append('<div>'+field.label+' <input type="text" value="'+val+'" id="'+type+'-'+key+'-edit-input"/></div>');
+         $("#edit-popup").append('<div class="edit-field">'+field.label+' <input type="text" value="'+val+'" id="'+type+'-'+key+'-edit-input"/></div>');
     }else if(field.type == "select"){
     
          var fieldDiv = document.createElement('div'); 
+         fieldDiv.className = "edit-field";
          
          fieldDiv.innerHTML = field.label
          
@@ -1340,7 +1343,7 @@ function showGeneralEditForm(type,id){
          $("#edit-popup").append(fieldDiv);
           
     }else if(field.type == "textarea"){
-         $("#edit-popup").append('<div>'+field.label+' <textarea id="'+type+'-'+key+'-edit-input">'+val+'</textarea></div>');
+         $("#edit-popup").append('<div class="edit-field">'+field.label+' <textarea id="'+type+'-'+key+'-edit-input">'+val+'</textarea></div>');
     }   
  
   }
