@@ -2282,26 +2282,43 @@ analyze.show = function(){
     if(!analyze.startPicker){   
       analyze.startPicker = new Pikaday({
           field: document.getElementById('filter-start-time'),
-          format: 'YYYY-MM-DD',
-          onSelect: function() {
-             analyze.filters.startTime = document.getElementById('filter-start-time').value;
-             analyze.filter();
-          }
+          format: 'YYYY-MM-DD'//,
+       //   onSelect: function() {
+       //      analyze.filters.startTime = document.getElementById('filter-start-time').value;
+       //      analyze.filter();
+       //   }
       });
     }
     
     if(!analyze.endPicker){
       analyze.endPicker = new Pikaday({
           field: document.getElementById('filter-end-time'),
-          format: 'YYYY-MM-DD',
-          onSelect: function() {
-             analyze.filters.endTime = document.getElementById('filter-end-time').value+" 23:23:59";
-             analyze.filter();
-          }
+          format: 'YYYY-MM-DD'//,
+         // onSelect: function() {
+         //    analyze.filters.endTime = document.getElementById('filter-end-time').value+" 23:23:59";
+         //    analyze.filter();
+         // }
       });
+      console.log(analyze.endPicker);
     }
      
     analyze.filter();           
+}
+
+analyze.setStartTime = function(){
+   analyze.filters.startTime = document.getElementById('filter-start-time').value;
+   analyze.filter();   
+}
+
+analyze.setEndTime = function(){
+   var end = document.getElementById('filter-end-time').value;
+   if(end != ""){
+     var value = end+" 23:59:59";
+   }else{
+     var value = "";   
+   }
+   analyze.filters.endTime = value;
+   analyze.filter();   
 }
 
 analyze.setClient = function(clientId){
