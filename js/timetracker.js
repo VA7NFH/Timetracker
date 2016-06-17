@@ -339,7 +339,7 @@ function setClient(clientId){
     currentView.setClient(clientId);
   }
   
-  emitEvent("client","set");
+  emitEvent("client","set",clientId);
                                              
   //document.getElementById('task-controls').style.display = "none";
   
@@ -387,21 +387,18 @@ function saveProject(){
 
                      
 function setProject(id){
-
-  client_select = document.getElementById('client-select'); 
+ 
   project_select = document.getElementById('project-select'); 
-  task_select = document.getElementById('task-select');
-  
+ 
   if(id){
     project_select.value = id;
+  }else{
+    id = project_select.value;
   }
   
   current_task = '';
   
-  $("#session-start-button").hide();  
-  $("#task-edit-button").hide(); 
-  
-  if(project_select.value != 'all' && project_select.value != ''){  
+  if(id != 'all' && id != ''){  
    
     $("#edit-project-button").show();
   
@@ -413,28 +410,13 @@ function setProject(id){
     //document.getElementById('task-controls').style.display = "block";    
     //updateSelectOptionsFromData('task');
       
-  }
-  
-  if(project_select.value == "all" || project_select.value == ""){        
-      //project_select.options = [{text:"- All projects -",value:"all"}];
-      delete taskList.projectFilter;   
   }else{
-      //project_select.options = makeSelectOptions(ttData.clients[newVal].projects,true,{text:"- All projects -",value:"all"});               
-      taskList.projectFilter = {
-        type : "project",
-        field : "id",
-        condition : "equals",
-        value : current_project.id
-      };
-      
+    current_project = '';
   }
-       
-  taskList.filter();
-  taskList.update();
-  
-  if(typeof currentView.setProject == "function"){
-     currentView.setProject();
-  }
+   
+   
+  emitEvent('project','set',id);
+
   
   //updateSectionFromData('task');   
   ttSaveCurrent();  
@@ -707,6 +689,15 @@ function timeFromSeconds(s){
 
 }
 
+function hoursFromSeconds(s,round){
+  if(round){
+    return (s/3600).toFixed(round);
+  }else{
+    return (s/3600);
+  }
+}
+
+
 function timeDiffSecsFromString(dateStr1,dateStr2){
 
     date1 = new Date(dateStr1.replace(' ','T'));  
@@ -851,7 +842,7 @@ function updateSelectOptionsFromData(type,idSuffix){
     
     
     if(!setToCurrent){
-      options.unshift(['all','Select '+type+'...']);
+      options.unshift(['all','All '+type+'s...']);
     } 
           
           
@@ -2209,7 +2200,7 @@ var template = function selfTemplate (data,templateElId){
       }
    }else{
 
-     dbg("template()",data);
+     //dbg("template()",data);
     
      var template = gebi(templateElId);
      var parent = template.parentNode;
@@ -2314,7 +2305,7 @@ analyze.show = function(){
 }
 
 analyze.setClient = function(clientId){
-    analyze.filters.clientId = current_client.id || "all";
+    analyze.filters.clientId = clientId || "all";
     analyze.filter(); 
 }
 
@@ -2329,11 +2320,13 @@ analyze.filter = function (){
 
    tempTableData = [];
    
+   dbg("Filters in analyze.filter()",fs);
+   
    totalTime = 0;
    totalBillableTime = 0;  
    
    var projectTotal = 0; 
-   var lastProjectId = 0;
+   var lastRow = {};
    var clientTotal = 0; 
    var lastClientId = 0;
    
@@ -2345,41 +2338,97 @@ analyze.filter = function (){
      if (fs.startTime != "all" && flatData[row].start_time < fs.startTime){ continue; }      
      if (fs.endTime && flatData[row].end_time > fs.endTime){ continue; }
      
-     clientTotal += flatData[row].duration;
-      
-     if(flatData[row].client_id != lastClientId){ 
-       dbg("New client detected");
-       clientTotalRow = {client: flatData[row].client,project:"",task:"",start_time:"",durationHMS:timeFromSeconds(clientTotal)};
-       clientTotal = 0;
-       lastClientId = flatData[row].client_id;                                              
-       tempTableData.push(clientTotalRow);
+     if(!current_client){ 
+       if(lastRow.client_id && flatData[row].client_id != lastRow.client_id){ 
+         
+         clientTotalRow = {
+            client: lastRow.client,
+            project:"",
+            task:"",
+            start_time:"",
+            durationHMS:timeFromSeconds(clientTotal),
+            durationDecimal: hoursFromSeconds(clientTotal,2),
+            rowType:"client"
+         };
+                                                   
+         tempTableData.push(clientTotalRow);   
+         clientTotal = 0;   
+       }
      }
-          
-     projectTotal += flatData[row].duration;
-      
-     if(flatData[row].project_id != lastProjectId){
-       dbg("New project detected");
-       projectTotalRow = {client: flatData[row].client,project:flatData[row].project,task:"",start_time:"",durationHMS:timeFromSeconds(projectTotal)};
-       projectTotal = 0;
-       lastProjectId = flatData[row].project_id;                                               
-       tempTableData.push(projectTotalRow);
-     }
-                                                                                    
-     tempTableData.push(flatData[row]);
      
+     
+     if(!current_project && current_client){
+       if(lastRow.project_id && flatData[row].project_id != lastRow.project_id){
+         dbg("New project detected");
+         
+         projectTotalRow = {
+            client: lastRow.client,
+            project: lastRow.project,
+            task:"",
+            start_time:"",
+            durationHMS:timeFromSeconds(projectTotal),  
+            durationDecimal: hoursFromSeconds(projectTotal,2),
+            rowType:"project"
+         };
+                                             
+         tempTableData.push(projectTotalRow);         
+         projectTotal = 0;
+       }  
+     }
+     
+     if(current_client && current_project){
+        flatData[row].durationDecimal = hoursFromSeconds(flatData[row].duration,2),                                                                                          
+        tempTableData.push(flatData[row]);     
+     }
+     
+     clientTotal += flatData[row].duration;          
+     projectTotal += flatData[row].duration;          
      totalTime += flatData[row].duration;
      
      if(flatData[row].billable){
         totalBillableTime += flatData[row].duration;
      }
+     
+     lastRow = flatData[row];
            
    }
+   
+   if(!current_project && current_client){         
+         projectTotalRow = {
+            client: lastRow.client,
+            project: lastRow.project,
+            task:"",
+            start_time:"",
+            durationHMS:timeFromSeconds(projectTotal),
+            durationDecimal: hoursFromSeconds(projectTotal,2),
+            rowType:"project"
+         };                                            
+         tempTableData.push(projectTotalRow);         
+     }
+     
+   if(!current_client){         
+       clientTotalRow = {
+          client: lastRow.client,
+          project:"",
+          task:"",
+          start_time:"",
+          durationHMS:timeFromSeconds(clientTotal),
+          durationDecimal: hoursFromSeconds(clientTotal,2),
+          rowType:"client"
+       };
+                                                 
+       tempTableData.push(clientTotalRow);   
+       clientTotal = 0;   
+    }
+   
    
    dbg("Temp data in analyze.filter",tempTableData);
    
                                          
-   analyze.totals.totalTimeHMS = timeFromSeconds(totalTime);                                            
-   analyze.totals.totalBillableTimeHMS = timeFromSeconds(totalBillableTime);            
+   analyze.totals.totalTimeHMS = timeFromSeconds(totalTime);   
+   analyze.totals.totalTimeDecimal = hoursFromSeconds(totalTime,2);                                          
+   analyze.totals.totalBillableTimeHMS = timeFromSeconds(totalBillableTime);                           
+   analyze.totals.totalBillableTimeDecimal = hoursFromSeconds(totalBillableTime,2);           
    analyze.tableData = tempTableData;
    
    clearTemplate("analyze-data-row-template");
@@ -2492,7 +2541,7 @@ makeFormInput = function selfMakeFormInput (type,attribs){
 }
 
 
-function emitEvent(type,action){
+function emitEvent(type,action,value){
   if(type == "task"){
     if(action == "deleted" || action == "edited" || action == "added" || action == "updated" ){
       if(typeof currentView.filter == "function"){
@@ -2506,14 +2555,42 @@ function emitEvent(type,action){
   }else if(type == "client"){
     if(action == "set"){
       setProject("all");
-      if(typeof currentView.filter == "function"){
-         currentView.filter();
-      }
-      if(typeof currentView.update == "function"){
-         currentView.update();
-      } 
-    
+      
+      if(typeof currentView.setClient == "function"){
+         currentView.setClient(value);
+      }else{
+        
+        if(typeof currentView.filter == "function"){
+           currentView.filter();
+        }
+        if(typeof currentView.update == "function"){
+           currentView.update();
+        }       
+      
+      }          
     }
+  }else if(type == "project"){
+    if(action == "set"){
+      if(typeof currentView.setProject == "function"){
+         currentView.setProject();
+      }           
+      if(currentView == taskList){  
+        if(value == "all" || value == ""){        
+            delete taskList.projectFilter;   
+        }else{
+            //project_select.options = makeSelectOptions(ttData.clients[newVal].projects,true,{text:"- All projects -",value:"all"});               
+            taskList.projectFilter = {
+              type : "project",
+              field : "id",
+              condition : "equals",
+              value : value
+            };
+            
+        }
+        taskList.filter();
+        taskList.update();            
+      }               
+    }  
   }
 }
 
