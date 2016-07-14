@@ -2,18 +2,14 @@ var current_client, current_project, current_task, current_session;
 
 var ttData;
 
-var  client_select = document.getElementById('client-select'); 
-var  project_select = document.getElementById('project-select');
-var  task_select = document.getElementById('task-select');
-
 var feedbackElement; 
+
+var eventWatchers = [];
 
 var startDate;    
 var nowDate;
 var counterId;
 var currentDuration;
-
-var view = "track";
 
 var defaultSettings = {
   top_level_title : "Client",
@@ -25,15 +21,13 @@ var defaultSettings = {
   reminder_delay : 1
 };
 
-var views = {
-  "analyze" : {}, 
-  "taskList" : {},
-  "settingsView" : {}
-}
-
 var analyze = {};
 var taskList = {};
-var settingsView = {};
+var settingsView = {};  
+var clientControls = {};  
+var projectControls = {};
+
+var currentView = taskList;
 
 var flatData = [];
 
@@ -134,6 +128,21 @@ var editFields = {
       label : "Notes",
       type : "textarea",   
     }  
+  },
+  session : {
+    start_time : {
+      label : "Start time",
+      type: "text"   
+    }, 
+    end_time : {
+      label : "End time",
+      type: "text"   
+    },   
+    notes : {
+      label : "Notes",
+      type : "textarea",   
+    }  
+  
   }
 };
 
@@ -145,11 +154,10 @@ if(typeof require === "function"){
 Notification.requestPermission();
 
 
-/* ############################# INITIALIZE ################################# */
+/* ############################### INITIALIZE ################################# */
 
 function ttInit(){
 
-    currentView = taskList;
 
     feedbackElement = document.getElementById('feedback');
     
@@ -177,35 +185,43 @@ function ttInit(){
          ttSave();
       }
       
-      
+      /*
       updateSelectOptionsFromData('client');
+      
+      clientControls.show();
       
       if(getMemberCount(ttData.clients) < 1){
          addClientForm();
       }
+      */
       
       if(localStorage.ttClientId && typeof ttData.clients[localStorage.ttClientId] == "object"){
+        dbg("Loading current client",ttData.clients[localStorage.ttClientId]);
                  
         current_client = ttData.clients[localStorage.ttClientId];
                   
-        setClient(localStorage.ttClientId);
+        //setClient(localStorage.ttClientId);
        
-        if(localStorage.ttProjectId && typeof current_client.projects[localStorage.ttProjectId] == "object"){ 
+        if(localStorage.ttProjectId && typeof current_client.projects[localStorage.ttProjectId] == "object"){
+          dbg("Loading current project",current_client.projects[localStorage.ttProjectId]); 
              
-          current_project = current_client.projects[localStorage.ttProjectId];                    
-          setProject(current_project.id);
+          current_project = current_client.projects[localStorage.ttProjectId];  
+                            
+          //setProject(current_project.id);
       
           if(localStorage.ttTaskId && typeof current_project.tasks[localStorage.ttTaskId] == "object"){
                 
             current_task = current_project.tasks[localStorage.ttTaskId];
             
-            setTask(current_task.id);
+            //setTask(current_task.id);
             
             if(localStorage.ttSessionId){
               current_session = current_task.sessions[localStorage.ttSessionId];             
-              continueSession();
+              //continueSession();
             }            
           }
+        }else{
+          dbg("No data found for localStorage.ttProjectId",localStorage.ttProjectId);
         }
       }
     }
@@ -229,41 +245,56 @@ function ttInit(){
      
    });
    
-   $('.modal-bg').on('click',function(e){
-      cancelEditForm();
-   });
+
+   
+   clientControls.show();
+   
+   if(typeof current_client == "object"){
+     projectControls.show();
+   }
+   
+   if(getMemberCount(ttData.clients) > 0){
+      setView('taskList');   
+   }
+
+
+   if(current_session){
+      continueSession();
+   }      
+   
+
+   
    
 }
 
+/* ################################## INPUT HANDLING FUNCTIONS ################################## */
+/** These functions should only be used for handling input from the DOM, calling data update functions 
+ *  as needed, and then emitting a (pseudo) event to notify the view updaters that something's happened. 
+ *  For now they are called from the DOM directly, which is considered so not cool, although it works fine. 
+ *  In some cases they still do other things, which should get migrated to appropriate view functions 
 
 
-/* ########################### TRACK CLIENT CONTROL ######################### */
-
-function addClientForm(){
-   document.getElementById('add-client-form').style.display = "block";
-   document.getElementById('select-client-form').style.display = "none"; 
-
-}
-
-function cancelAddClient(){
-  document.getElementById('add-client-input').value = '';
-  document.getElementById('add-client-form').style.display = "none";
-  document.getElementById('select-client-form').style.display = "block";
-}
+/* ########################### CLIENT CONTROL ######################### */
 
 function saveClient(){
   
   new_client = {
       'id' : newId(),
-      'name' : document.getElementById('add-client-input').value,
+      'name' : gebi('add-client-input').value,
       'projects' : {}
   };
    
   ttData.clients[new_client.id] = new_client; 
   ttSave();
-  updateSelectOptionsFromData('client');  
+  
+  emitEvent('client','add');
+  
+  // All this stuff goes to view functions or dispatcher...
+  updateSelectOptionsFromData('client'); 
+  cancelAddClient();    
+  
   setClient(new_client.id); 
-  cancelAddClient();  
+  
   setFeedback('Client saved','success'); 
   
 }
@@ -271,35 +302,30 @@ function saveClient(){
 
 function setClient(clientId){
 
-  client_select = document.getElementById('client-select');
+  client_select = gebi('client-select');
   
   if(clientId){     
     client_select.value = clientId;  
   }else{
     clientId = client_select.value;
-  }
-  
-  dbg("Client ID in setClient()",clientId);
-          
-  delete taskList.projectFilter;
+  } 
   
   if(clientId == "all"){
                                          
-    delete taskList.clientFilter;
-    current_client = null;
+    current_client = "all";
     
-    gebi('project-controls').style.display = "none"; 
+    gebi('project-controls').style.display = "none"; // Move 
     
   }else{
   
     
-    gebi('project-controls').style.display = "block"; 
+    gebi('project-controls').style.display = "block";  // Move  
   
     current_client = ttData.clients[client_select.value];
     
-    current_project = '';  
+    current_project = '';  // Move   
     
-    $("#edit-project-button").hide();
+    $("#edit-project-button").hide();  // Move 
     
     // Count how many projects this client has
     project_count = 0;
@@ -319,32 +345,18 @@ function setClient(clientId){
     }
     
     $('#project-controls').show();
-  
-
-    //project_select.options = makeSelectOptions(ttData.clients[newVal].projects,true,{text:"- All projects -",value:"all"});             
-    taskList.clientFilter = {
-      type : "client",
-      field : "id",
-      condition : "equals",
-      value : current_client.id
-    };
       
   }
-  //project_select.value = 'all';     
-  
-  taskList.filter();
-  taskList.update();
-  
-  $('#task-list').show();
+       
     
   if(currentView.setClient){
     currentView.setClient(clientId);
   }
   
-  emitEvent("client","set",clientId);
-                                             
-  //document.getElementById('task-controls').style.display = "none";
+  dbg("Sending client to emitEvent",clientId);
   
+  emitEvent("client","set",clientId);
+                                              
   ttSaveCurrent();
   
 }
@@ -404,13 +416,9 @@ function setProject(id){
    
     $("#edit-project-button").show();
   
-    //if(project_select[0].value == ''){
-    //  project_select.remove(0);
-    //}
-    
-    current_project = ttData.clients[client_select.value].projects[project_select.value];       
-    //document.getElementById('task-controls').style.display = "block";    
-    //updateSelectOptionsFromData('task');
+    // This could be replaced with a call to getItemById(), but that would be slower, so we'll leave it like this for now..
+  
+    current_project = ttData.clients[current_client.id].projects[project_select.value];       
       
   }else{
     current_project = '';
@@ -418,9 +426,7 @@ function setProject(id){
    
    
   emitEvent('project','set',id);
-
   
-  //updateSectionFromData('task');   
   ttSaveCurrent();  
 }
 
@@ -431,22 +437,12 @@ function setProject(id){
 
 
 
-function setTask(id){
-  if(id){
-    task_id = id;
-    //task_select.value = id;
-  }else{
-    //task_id = task_select.value;  
-  }
-  
-  if(task_id){
-    
-    //current_task = current_project.tasks[task_id];
-    //document.getElementById('session-start-button').style.display = 'inline';
-    //$("#task-edit-button").show();
-      
-    ttSaveCurrent();
-    
+function setTask(task_id){
+  if(task_id){ 
+    if(typeof current_project == "object" && current_project.tasks[task_id]){   
+      current_task = current_project.tasks[task_id];      
+      ttSaveCurrent();    
+    }
   }
 }
 
@@ -454,10 +450,14 @@ function setTask(id){
 function saveNewTask(projectId,task_name){
 
     var taskSaveTimeObj = new Date();
-    var taskSaveTime = (taskSaveTimeObj.getSeconds()*1000)+taskSaveTimeObj.getMilliseconds();
+    var taskSaveTime = (taskSaveTimeObj.getTime());
     
     if((taskSaveTime - lastTaskSaveTime) < 500){
-      dbg("ltst:",lastTaskSaveTime);
+    
+      dbg("Task was saved within 500 ms. Starting task:",lastTaskSaveId);
+      dbg("lastTaskSaveTime",lastTaskSaveTime);    
+      dbg("taskSaveTime",taskSaveTime);
+      
       startGeneralSession(lastTaskSaveId);
       return;    
     }
@@ -491,20 +491,6 @@ function saveNewTask(projectId,task_name){
   }else{  
       new_task.billable = true;   
   }
-  
-  dbg("SaveNewTask",new_task);
-  
-  //quit();
-  /* Everything below here should probably be moved into a global "save" function 
-  that abstracts the data model and forces data object integrity 
-  
-  save("task",new_task);
-  
-  setCurrent("task",new_task.id);
-  
-  
-  */   
-
  
   current_task = new_task;
   
@@ -517,8 +503,6 @@ function saveNewTask(projectId,task_name){
   ttData.clients[current_client.id].projects[current_project.id].tasks = current_project.tasks;
    
   ttSave();   
-  //updateSelectOptionsFromData('task');  
-  //updateSectionFromData('task');
      
   setTask(new_task.id); 
   
@@ -531,6 +515,7 @@ function saveNewTask(projectId,task_name){
    
 }
 
+/* Update task from "completed" checkbox */
 function setTaskComplete(task_id,element){
 
   task = getItemById("task",task_id);
@@ -544,9 +529,10 @@ function setTaskComplete(task_id,element){
   updateItemById("task",task_id,task);
 
   emitEvent("task","updated");
+  
+  ttSave();
 
 }
-
 
 
 /* ######################### TRACK SESSION CONTROL ########################## */
@@ -568,16 +554,14 @@ function startSession(){
   ttSaveCurrent();
 }
 
-function startGeneralSession(taskId) {
+/* Wrapper to start session by task ID, without current client or project set */
 
-  dbg("Starting session with task ID",taskId);
+function startGeneralSession(taskId) {
          
    var branch = getBranchById("task",taskId); 
    current_client = branch.client;                                                  
    current_project = branch.project;    
    current_task = branch.task;
-   
-   dbg("Branch",branch);
    
    startSession();
    
@@ -590,13 +574,7 @@ function continueSession(){
 }
 
 
-function showInSession(){
 
-  document.getElementById('active-session').innerHTML =  '<div class="centered-box"><div id="current-info"><b>'+current_client.name+'</b> > <b>'+current_project.name+'</b> > <b>'+current_task.name+'</b></div><div id="current_duration"><span style="color:#dddddd">00:00:00</span></div><input type="text" id="session-notes-input" placeholder="Add notes" /><div><input type="checkbox"  id="task-complete-input"/><label for="task-complete-input">Task complete</label></div><a class="button" onClick="endSession()">End Session</a></div>';
-      
-  document.getElementById('active-session').style.display = 'block';
-
-}
 
 
 function endSession(){  
@@ -610,8 +588,7 @@ function endSession(){
   if(document.getElementById("task-complete-input").checked == true){
     current_task.status = "completed";   
     task_complete_feedback = " <b>Task complete!<b>";
-    feedback_class = "success";    
-    // updateSelectOptionsFromData('task');    
+    feedback_class = "success";       
   }else{
     current_task.status = "inProcess";
     task_complete_feedback = ""; 
@@ -629,17 +606,42 @@ function endSession(){
   ttSaveCurrent();   
   document.getElementById('active-session').style.display = 'none';     
   document.title = "Timetracker";  
-  edit_button = '<form style="display:inline"><input type="hidden" id="session_id-input" value="'+pastSessionId+'"/><a class="button" onClick="showEditForm(\'session\')">Edit session</a></form>';  
+  edit_button = '<form style="display:inline"><a class="button" onClick="showGeneralEditForm(\'session\',\''+pastSessionId+'\')">Edit session</a></form>';  
   setFeedback("Session Ended. Duration was "+currentDuration+task_complete_feedback+edit_button,feedback_class);
   
-  taskList.filter();
-  taskList.update();
- 
+  taskList.filter(); // Move
+  taskList.update(); // Move
   
+  emitEvent('session','ended');
+   
   if(getSetting("auto_synch") == "true"){
     synchToServer();
   }
 
+}
+
+function showInSession(){
+
+  gebi('active-session').innerHTML =  '<div class="centered-box"><div id="current-info"><b>'+current_client.name+'</b> > <b>'+current_project.name+'</b> > <b>'+current_task.name+'</b></div><div id="current_duration"><span style="color:#dddddd">00:00:00</span></div><input type="text" id="session-notes-input" placeholder="Add notes" /><div><input type="checkbox"  id="task-complete-input"/><label for="task-complete-input">Task complete</label></div><a class="button" onClick="endSession()">End Session</a></div>';      
+  gebi('active-session').style.display = 'block';
+
+}
+
+
+function incrementCurrentDuration() {
+    
+    currentDurationSeconds = moment().diff(startDate)/1000;  
+    currentDuration = timeFromSeconds(currentDurationSeconds); 
+    document.getElementById('current_duration').innerHTML = currentDuration;   
+    document.title = currentDuration + ' - Timetracker';
+    
+    if(getSetting('reminder_interval') && (currentDurationSeconds/60) > (parseFloat(getSetting('reminder_interval'))+reminderDelay)){
+    
+      desktopNotify(getSetting('reminder_message'),getSetting('reminder_title'));
+      
+      reminderDelay += parseFloat(getSetting('reminder_delay'));
+    
+    }            
 }
 
 
@@ -657,7 +659,7 @@ function setFeedback(message,type,stayVisible){
   stayVisible || (stayVisible = false);
   
   feedbackElement.innerHTML = message; 
-  feedbackElement.class = type;   
+  feedbackElement.className = type;   
   feedbackElement.style.display = 'block';
   
   if(!stayVisible){
@@ -666,7 +668,7 @@ function setFeedback(message,type,stayVisible){
 }
 
 function desktopNotify(message,title,icon) {
-  title || (title = "Timtracker notification");
+  title || (title = "Timetracker notification");
   
   options = {
       body: message,
@@ -676,100 +678,1110 @@ function desktopNotify(message,title,icon) {
 }
 
 
+function saveUserKey(){
 
-
-/* ####################### TIME & DATE FUNCTIONS ########################## */
-
-
-function timeFromSeconds(s){
-
-    var hours = parseInt(s/3600);
-    var minutes = parseInt(s/60) % 60;
-    var seconds = parseInt(s) % 60;
-
-    return (hours < 10 ? "0" + hours : hours) + ":" + (minutes < 10 ? "0" + minutes : minutes) + ":" + (seconds  < 10 ? "0" + seconds : seconds);
-
+  key_val = $("#add-userkey-input").val();
+  ttData.userKey = key_val;
+  
+  ttSave();
+  
+  $("#modal-bg").hide(); 
+  $("#edit-popup").hide();  
+  $("#edit-popup").html('');
+  
+  addClientForm();
+  
+  //ttInit();
+  
 }
 
-function hoursFromSeconds(s,round){
-  if(round){
-    return (s/3600).toFixed(round);
-  }else{
-    return (s/3600);
-  }
-}
-
-
-function timeDiffSecsFromString(dateStr1,dateStr2){
-
-    date1 = new Date(dateStr1.replace(' ','T'));  
-    date2 = new Date(dateStr2.replace(' ','T'));
-    
-    diffMs = date2.getTime() - date1.getTime();
-    
-    return (diffMs/1000);
  
-}
-
-function incrementCurrentDuration() {
-    
-    currentDurationSeconds = moment().diff(startDate)/1000;  
-    currentDuration = timeFromSeconds(currentDurationSeconds); 
-    document.getElementById('current_duration').innerHTML = currentDuration;   
-    document.title = currentDuration + ' - Timetracker';
-    
-    if(getSetting('reminder_interval') && (currentDurationSeconds/60) > (parseFloat(getSetting('reminder_interval'))+reminderDelay)){
-    
-      desktopNotify(getSetting('reminder_message'),getSetting('reminder_title'));
-      
-      reminderDelay += parseFloat(getSetting('reminder_delay'));
-    
-    }    
-    
-        
+function deleteLocalStorage(){
+  if(confirm("Are you sure you would like to delete all your local time and task data?")){
+    delete localStorage.ttData;
+    delete localStorage.ttClientId;   
+    delete localStorage.ttProjectId;  
+    delete localStorage.ttTaskId;    
+    delete localStorage.ttSessionId;
+    setFeedback('LocalStorage deleted. Refresh to see changes.');
+  }
 }
 
 
+/* ############################# EDIT FUNCTIONS ############################# */
 
 
-/* ######################### UTILITY FUNCTIONS ########################## */
+function editJson(){
+  document.getElementById('json-output').innerHTML = '<form><textarea id="edit-json-textarea">'+JSON.stringify(ttData,null,'   ')+'</textarea></form><a href="#void" class="button" onClick="saveJson()">Save</a>';
+}
 
-
-function gebi(id){
-  return document.getElementById(id);
+function saveJson(){
+   input_json = $("#edit-json-textarea").val();
+   
+   try{
+      input_data = JSON.parse(input_json);
+   }catch(err){
+      setFeedback('Oops! JSON input is invalid. Error: '+err,'error');
+      return;
+   }
+     
+   ttData = input_data;  
+   ttSave();   
+   setFeedback('JSON data saved.');
+   $("#json-output").hide();    
 }
 
 
-function pad(n){return n<10 ? '0'+n : n;}
-
-
-
-function newId(name,type){
-  
-  id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-    return v.toString(16);
-});
-  
-  return id;
+function cancelEditForm(){
+  $('#edit-popup').html(''); 
+  $('#modal-bg').hide(); 
+  $('#edit-popup').hide();
 }
 
 
+function saveGeneralEditForm(type,id){
 
-function dbg(text,test_data){
-
-  if(text){
-    console.log(text,test_data);
+  if(type == 'settings'){
+    var item = ttData.settings;
   }else{
-    console.log(test_data);  
+    var item = getItemById(type,id)
   }
   
+  for (key in editFields[type]){
+    if(document.getElementById(type+"-"+key+"-edit-input")){
+      item[key] = document.getElementById(type+"-"+key+"-edit-input").value;
+    }else{
+      dbg("Field not found in edit form:",key);
+    }
+  }
+  
+       
+          
+  
+  /* This is excessively lame, and is only here because of issues with Vue.js... */
+  if(type == "task"){
+    item.displayStatus = editFields.task.status.options[item.status];
+  }
+  
+  updateItemById(type,id,item);
+  
+  /* Unset task time value if edited session */
+  if(type == "session"){
+    var branch = getBranchById(type,id);    
+    var parentTask = branch.task;
+    
+    delete parentTask.time;
+    
+    updateItemById("task",parentTask.id,parentTask);
+    
+  } 
+  
+  
+  if(type != "session" && type != "settings" && type != "task"){
+    updateSelectOptionsFromData(type);  
+  }                
+     
+  ttSave();  
+  setFeedback('Item updated');  
+  cancelEditForm();
+  
+  if(typeof currentView.update == "function"){
+    currentView.update();
+  }
+}
 
+function deleteConfirm(msg,yesCallback,noCallback){
+  gebi("delete-confirm-message").innerHTML = msg;
+  gebi("delete-confirm-yes").onclick = yesCallback;  
+  gebi("delete-confirm-no").onclick = noCallback;
+  $("#modal-bg").show(); 
+  $("#delete-confirm").show();    
+  
+} 
+
+function deleteGeneralFromEditForm(type,id){
+
+/*
+  deleteConfirm("Are you sure you would like to delete this "+type+" (and all sub items?",function(){
+  
+  
+  }
+*/
+
+  if(confirm("Are you sure you would like to delete this "+type+" (and all sub items)?")){
+      
+    dbg('deleteGeneralFromEditForm() with:',[type,id]); 
+  
+    deleteItemById(type,id);
+     
+    if(type != "session" && type != "task"){
+      updateSelectOptionsFromData(type);                 // Move
+    }
+     
+    ttSave();              
+    setFeedback(type+' deleted.');
+    
+    emitEvent(type,"deleted",id); 
+    cancelEditForm(); 
+  }  
+} 
+
+/* Edit form that doesn't require current values to be set */
+
+function showGeneralEditForm(type,id){
+
+  if(!id){
+    if(type == "client" && typeof current_client == "object"){
+      id = current_client.id;    
+    }else if(type == "project" && typeof current_project == "object")
+      id = current_project.id;  
+  }
+  
+  if(!id){
+    setFeedback("No item ID or current item in edit!","error");
+  }
+   
+  edit_element = document.getElementById("edit-popup");
+                      
+  $("#edit-popup").html("<h3>Edit "+type+"</h3><form>");
+  
+  properties = getItemById(type,id);
+                                  
+  for (key in editFields[type]){
+  
+    var field = editFields[type][key];
+                                                                     
+    if(typeof properties[key] != "object" && properties[key]){
+      var val = properties[key];
+    }else if(field.defaultVal){
+      var val = field.defaultVal;
+    }else{
+      var val = "";
+    }
+    
+    if(field.type == "text"){
+         $("#edit-popup").append('<div class="edit-field">'+field.label+' <input type="text" value="'+val+'" id="'+type+'-'+key+'-edit-input"/></div>');
+    }else if(field.type == "select"){
+    
+      var fieldDiv = document.createElement('div'); 
+      fieldDiv.className = "edit-field";      
+      fieldDiv.innerHTML = field.label
+      
+      var select = document.createElement('select');
+      select.id = type+'-'+key+'-edit-input';
+      
+      for (var optkey in field.options){
+        var option = new Option(field.options[optkey],optkey);
+        select.options.add(option);               
+      }         
+      
+      select.value = val;
+      
+      fieldDiv.appendChild(select);         
+      $("#edit-popup").append(fieldDiv);
+          
+    }else if(field.type == "textarea"){
+      $("#edit-popup").append('<div class="edit-field">'+field.label+' <textarea id="'+type+'-'+key+'-edit-input">'+val+'</textarea></div>');
+    }   
+ 
+  }
+    
+  $("#edit-popup").append('<div>');
+  $("#edit-popup").append('<a class="button" onClick="saveGeneralEditForm(\''+type+'\',\''+id+'\')">Save</a>');
+  $("#edit-popup").append('<a class="button" onClick="cancelEditForm()">Cancel</a>');
+  
+  if(type != "settings"){
+    $("#edit-popup").append('<a class="button red" onClick="deleteGeneralFromEditForm(\''+type+'\',\''+id+'\')">Delete Item</a></div></form>');
+  }  
+  
+  $("#modal-bg").show(); 
+  $("#edit-popup").show();                  
+
+}
+
+
+
+
+
+function setView(view){
+
+    if(currentView){
+       if(typeof currentView.hide == "function"){
+          currentView.hide();
+       }
+    }
+    
+    if(view == "analyze"){
+      currentView = analyze;
+    }else if(view == "taskList"){
+      currentView = taskList;
+    }else if(view == "settingsView"){
+      currentView = settingsView;
+    }
+    
+    viewElements = document.getElementsByClassName("view-container");
+
+    for (var i = 0; i < viewElements.length; ++i){
+       if(viewElements[i].id == view+"-view"){
+          viewElements[i].style.display = "block";
+       }else{
+          viewElements[i].style.display = "none";       
+       }
+    }
+    
+    if(typeof currentView.show == "function"){
+      currentView.show();
+    }
+}
+
+
+
+
+/** ############################ The Big Ugly Traffic Controller ############################### **/
+/** Which takes pseudo-events from the input functions and updates views (or calls other input
+ * functions) accordingly. This is sort of a placeholder, and should probably be replaced with proper
+ * event listening at some future date.
+ **/
+
+
+function emitEvent(type,action,value){
+
+  dbg("Event emitted",type+" "+action+" "+value);
+  //Testing a different approach...
+  // This could also be done as a structured object (so directly "addressable" items), but we'll do 
+  // it this way for now for simplicity  
+  for(var i = 0; i < eventWatchers.length; i++){
+    var eW = eventWatchers[i];
+    if(eW.type == type && eW.action == action){
+      if(typeof eW.callback === "function"){
+        eW.callback.call(eW,value);
+      }
+    }
+  }
+
+
+  if(type == "task"){
+    if(action == "deleted" || action == "edited" || action == "added" || action == "updated" ){
+      if(typeof currentView.filter == "function"){
+         currentView.filter();
+      }
+      if(typeof currentView.update == "function"){
+         currentView.update();
+      }      
+      
+    }    
+  }else if(type == "client"){
+    if(action == "set"){
+      setProject("all");
+      
+      if(typeof currentView.setClient == "function"){
+         currentView.setClient(value);
+      }else{
+        
+        if(typeof currentView.filter == "function"){
+           currentView.filter();
+        }
+        if(typeof currentView.update == "function"){
+           currentView.update();
+        }       
+      
+      }          
+    }
+  }else if(type == "project"){
+    if(action == "set"){
+      if(typeof currentView.setProject == "function"){
+         currentView.setProject();
+      }                       
+    }  
+  }
+}
+
+
+function addEventWatcher(type,action,callback,owner){
+  if(typeof type == "object"){
+    eventWatchers.push(type);
+  }else{
+     eventWatchers.push({type:type, action:action,callback:callback,owner:owner});  
+  }
+}    
+
+function addEventWatchers(watchers){
+  for(var i = 0; i < watchers.length; i++){
+    eventWatchers.push(watchers[i]); 
+  }
+}
+
+function removeEventWatchers(owner){  
+  for(var i = 0; i < eventWatchers.length; i++){
+    var eW = eventWatchers[i];
+    if(eW.owner == owner){
+      eventWatchers.splice(i,1);
+    }
+  }
+}
+
+function getEventWatchers(owner){
+  var ownerWatchers = [];
+  for(var i = 0; i < eventWatchers.length; i++){
+    var eW = eventWatchers[i];
+    if(eW.owner == owner){
+      ownerWatchers.push(eW);
+    }
+  }
+  return ownerWatchers;
+}
+
+
+/* ########################### Client Controls ########################## */
+
+clientControls.show = function(){
+
+  addEventWatcher('client','add',function(id){
+    clientControls.update();   
+  },'clientControls');  
+         
+  addEventWatcher('client','set',function(id){
+    dbg("clientControls client set watcher fired with id",id);
+    if(id == "all" || id == ""){                                         
+      gebi("edit-client-button").style.display = "none";
+    }else{
+      gebi("edit-client-button").style.display = "block";      
+    }
+      
+    gebi("client-select").value = id;  
+      
+  },'clientControls');
+  
+  clientControls.update(); 
+  
+  gebi("client-controls").style.display = "block";   
+  
+} 
+
+clientControls.hide = function(){
+  removeEventWatchers('clientControls'); 
+  gebi("#client-controls").style.display = "none"; 
+}
+
+clientControls.update = function(){
+
+    var options = [];
+    
+    for (client_id in ttData.clients){           
+      options.push([client_id,ttData.clients[client_id].name]);
+    }
+    
+    options.sort(function(a, b) {         
+      a = a[1];  
+      b = b[1];
+      return a.localeCompare(b);
+    }); 
+        
+    options.unshift(['all','All Clients...']);
+     
+    updateSelectOptions(gebi("client-select"),options);
+    
+    var currentValue = 'all';
+    
+    if(typeof current_client == "object"){
+       currentValue = current_client.id || "all";
+    }    
+    gebi("client-select").value = currentValue;
+    
+}
+
+clientControls.showAddClientForm = function(){
+   gebi('add-client-form').style.display = "block";
+   gebi('select-client-form').style.display = "none"; 
+} 
+
+clientControls.cancelAddClientForm = function(){
+  gebi('add-client-input').value = '';
+  gebi('add-client-form').style.display = "none";
+  gebi('select-client-form').style.display = "block";
+}
+
+
+
+/* ########################### Project Controls ########################## */
+
+projectControls.show = function(){
+
+  if(getEventWatchers('projectControls').length < 1){
+    
+      addEventWatcher('project','set',function(id){
+      
+        if(id == "all" || id == ""){                                         
+          gebi("edit-project-button").style.display = "none";
+        }else{
+          gebi("edit-project-button").style.display = "block";      
+        }
+                
+        projectControls.update();   
+      },'projectControls');
+    
+      addEventWatcher('client','set',function(id){
+        if(id == "all"){
+          projectControls.hide();
+        }else{
+          projectControls.show();
+        }
+       
+      },'projectControls');    
+  }
+   
+  projectControls.update(); 
+  gebi("project-controls").style.display = "block";   
+  
+} 
+
+projectControls.hide = function(){
+  // removeEventWatchers('projectControls'); 
+  gebi("project-controls").style.display = "none"; 
+}
+
+projectControls.update = function(){
+
+    var options = [];
+    
+    if(typeof current_client == "object" && current_client != "all"){
+    
+      if(getMemberCount(current_client.projects) > 0){          
+        for (project_id in current_client.projects){
+           options.push([project_id,current_client.projects[project_id].name]);
+        }
+            
+        options.sort(function(a, b) {         
+            a = a[1];  
+            b = b[1];
+            return a.localeCompare(b);
+        }); 
+          
+        options.unshift(['all','All Projects...']);
+       
+        updateSelectOptions(gebi("project-select"),options);
+      
+        var currentValue = 'all';
+      
+        if(typeof current_project == "object"){
+           currentValue = current_project.id || "all";
+        }    
+        gebi("project-select").value = currentValue;       
+      }else{
+        projectControls.showAddProjectForm();
+      }
+    }
+    
+}
+
+projectControls.showAddProjectForm = function(){
+   gebi('add-project-form').style.display = "block";
+   gebi('select-project-form').style.display = "none"; 
+} 
+
+projectControls.cancelAddProjectForm = function(){
+  gebi('add-project-input').value = '';
+  gebi('add-project-form').style.display = "none";
+  gebi('select-project-form').style.display = "block";
+}
+
+
+/* These will be removed ... */
+
+function addClientForm(){
+   gebi('add-client-form').style.display = "block";
+   gebi('select-client-form').style.display = "none"; 
+}
+
+// And this too
+function cancelAddClient(){
+  gebi('add-client-input').value = '';
+  gebi('add-client-form').style.display = "none";
+  gebi('select-client-form').style.display = "block";
+}
+
+
+
+
+/* ########################### TASK LIST VIEW ######################### */
+
+taskList.show = function(){
+  
+  addEventWatcher('client','set',function(clientId){
+      
+    delete taskList.projectFilter;  
+    
+    if(clientId == "all" || clientId == ""){                                         
+      delete taskList.clientFilter;
+    }else{
+      taskList.clientFilter = {
+        type : "client",
+        field : "id",
+        condition : "equals",
+        value : current_client.id
+      };
+      
+    }
+      
+    taskList.update();
+    
+  },'taskList');     
+
+  
+  addEventWatcher('project','set',function(projectId){
+      
+      if(projectId == "all" || projectId == ""){        
+          delete taskList.projectFilter;   
+      }else{             
+          taskList.projectFilter = {
+            type : "project",
+            field : "id",
+            condition : "equals",
+            value : projectId
+          };
+          
+      }
+
+      taskList.update(); 
+    
+  },'taskList');
+  
+  
+  
+  if(getCurrent("client") && getCurrent("client") != "all" && !taskList.clientFilter){
+      taskList.clientFilter = {
+        type : "client",
+        field : "id",
+        condition : "equals",
+        value : current_client.id
+      };  
+  }
+  
+    
+  if(getCurrent("project") && getCurrent("project") != "all" && !taskList.projectFilter){
+      taskList.projectFilter = {
+        type : "project",
+        field : "id",
+        condition : "equals",
+        value : current_project.id
+      };  
+  }
+  
+  taskList.update();
   
 }
 
-function getSetting(name){
-  return ttData.settings[name];
+taskList.hide = function(){
+  removeEventWatchers('taskList');
+}
+
+taskList.filter = function(){
+            
+    taskList.tasks = [];
+              
+    var fs = [];
+    
+    if(taskList.clientFilter){
+      fs.push(taskList.clientFilter);
+    }
+    if(taskList.projectFilter){
+      fs.push(taskList.projectFilter);
+    } 
+    
+    dbg("Tasklist filters",fs);
+     
+    loopData(fs,function(){ 
+      if(this.task){ 
+        
+        if(!this.task.time){
+          this.task.time = 0;
+          for (var sesId in this.task.sessions){          
+            this.task.time += timeDiffSecsFromString(this.task.sessions[sesId].start_time,this.task.sessions[sesId].end_time);
+          }
+        }
+        
+        this.task.meta = {};
+        
+        if(typeof current_client != "object" || current_client == ""){
+          this.task.client = this.client.name;
+        }else{
+          this.task.client = '';
+        }
+              
+        if(typeof current_project !== "object"){
+          this.task.project = truncate(this.project.name,25)+" ";
+        }else{
+          this.task.project = '';
+        }
+        
+        if(this.task.project && this.task.client){
+          this.task.metaParentage =  "<span>"+this.task.client+" > "+this.task.project+"</span>";
+        }else if(this.task.project){
+          this.task.metaParentage =  "<span>"+this.task.project+"</span>"
+        }else{
+          this.task.metaParentage =  "";
+        }
+                            
+        this.task.truncateName = truncate(this.task.name,35);
+        
+        
+        if(this.task.time > 0){
+          this.task.metaPrettyTime = "<span>"+prettyTime(this.task.time)+"</span>";
+        }else{
+          this.task.metaPrettyTime = '';
+        }
+        
+        this.task.metaDisplayStatus = "<span>"+editFields.task.status.options[this.task.status]+"</span>";
+                            
+        taskList.tasks.push(this.task);                  
+      }
+      return "continue";                         
+    });
+    
+                
+   if(taskList.tasks.length < 1){
+     document.getElementById("no-data-found-table").style.display = "table-row";
+   }else{
+     document.getElementById("no-data-found-table").style.display = "none";           
+   }                                 
+}
+
+taskList.hideNewTaskForm = function(){
+  gebi("task-form").style.display = "none";
+}
+
+taskList.sort = function(field){
+    taskList.sortData(field);
+    taskList.refresh();              
+}      
+ 
+taskList.sortData = function(field){
+
+    //taskList.sortDirection = "asc"; 
+        
+    if(taskList.sortBy == field){
+      if(taskList.sortDirection == "asc"){
+        taskList.sortDirection = "desc";
+      }else{
+        taskList.sortDirection = "asc";     
+      }
+    }else{
+      taskList.sortBy = field;
+    }
+
+    taskList.tasks.sort(function(a, b) {
+   
+      if(!a[taskList.sortBy]){
+        a[taskList.sortBy] = '';
+      }                   
+      if(!b[taskList.sortBy]){
+        b[taskList.sortBy] = '';
+      }
+      
+      if(taskList.sortBy == "time"){
+        if(taskList.sortDirection == "desc"){
+          return b.time-a.time; 
+        }else{
+          return a.time-b.time;        
+        }
+      }else{  
+        if(taskList.sortDirection == "desc"){
+          return b[taskList.sortBy].toString().localeCompare(a[taskList.sortBy].toString());
+        }else{
+          return a[taskList.sortBy].toString().localeCompare(b[taskList.sortBy].toString());       
+        }      
+      }
+      
+         
+   });                  
+}
+
+taskList.update = function(){ 
+   taskList.filter();
+   taskList.sortData();
+   taskList.refresh();
+}
+
+taskList.refresh = function(){ 
+                                                        
+   var addTaskForm = gebi("tasklist-new-task-form");
+   var templateEl = gebi('task-list-item-template');   
+   var template = templateEl.innerHTML;   
+   var listContainer = templateEl.parentNode; 
+   
+   listContainer.innerHTML = '';
+   
+   if(gebi("project-select").value != "all" && gebi("project-select").value != ""){
+     addTaskForm.style.display = "block";  
+   }else{
+     addTaskForm.style.display = "none";     
+   }
+   
+   listContainer.appendChild(addTaskForm); 
+   listContainer.appendChild(templateEl);
+   
+
+  for (taskListKey in taskList.tasks){
+     var task = taskList.tasks[taskListKey]; 
+     
+ 
+     
+     if(taskList.hideCompletedTasks == false || task.status != "completed"){
+  
+       var templateData = [];   
+              
+       for (taskKey in task){ 
+          templateData.push({placeholder: "{{task."+taskKey+"}}", value: task[taskKey]});     
+       }
+       
+       if(task.status == "completed"){       
+         var completedFlag = "checked";       
+       }else{    
+         var completedFlag = "";       
+       }
+       
+       if(task.billable == "true"){
+          var billable_display = "inline-block";
+       }else{
+          var billable_display = "none";
+       }
+       
+       
+       var completedInput = "<input type=\"checkbox\" name=\"task-completed\" "+completedFlag+" onClick=\"setTaskComplete('"+task.id+"')\"/>";
+       
+       templateData.push({placeholder:"{{checkCompleted}}",value: completedInput}); 
+       templateData.push({placeholder:"{{billable_display}}",value: billable_display});  
+       
+       
+       if(task.prettyTime){       
+         var metaSeparator = "|";       
+       }else{    
+         var metaSeparator = "";       
+       }
+              
+       templateData.push({placeholder:"{{metaSeparator}}",value: metaSeparator});      
+            
+       var taskEl = templateEl.cloneNode(false);
+       taskEl.id = "task-"+task.id;
+       taskEl.style.display = "block";
+       taskEl.innerHTML = fillTemplate(templateData,template);
+       templateEl.parentNode.appendChild(taskEl);     
+     }
+  }
+  
+  templateEl.style.display = "none";
+  
+}
+
+
+taskList.hideCompleted = function(){
+   taskList.hideCompletedTasks = gebi("hide-completed").checked ? true : false;   
+   taskList.update();
+} 
+
+
+/* ################################ ANALYZE VIEW ################################ */
+
+analyze.show = function(){
+
+    makeFlatData();
+    
+    var tableFields = {
+      client:"Client",
+      project:"Project",
+      task:"Task",
+      start_time:"Start Time",
+      duration:"Duration"
+    };
+        
+    analyze.totals = {};             
+    analyze.totals.totalTimeHMS = '';
+    analyze.totals.totalBillableTimeHMS = '';               
+    analyze.tableData = flatData; 
+          
+    analyze.filters = {
+            clientId : current_client.id || "all",
+            projectId : current_project.id || "all", 
+            taskId : "all",
+            startTime : "all",
+            endTime : "all"       
+    }
+
+       
+    if(!analyze.startPicker){   
+      analyze.startPicker = new Pikaday({
+          field: document.getElementById('filter-start-time'),
+          format: 'YYYY-MM-DD'//,
+       //   onSelect: function() {
+       //      analyze.filters.startTime = document.getElementById('filter-start-time').value;
+       //      analyze.filter();
+       //   }
+      });
+    }
+    
+    if(!analyze.endPicker){
+      analyze.endPicker = new Pikaday({
+          field: document.getElementById('filter-end-time'),
+          format: 'YYYY-MM-DD'//,
+         // onSelect: function() {
+         //    analyze.filters.endTime = document.getElementById('filter-end-time').value+" 23:23:59";
+         //    analyze.filter();
+         // }
+      });
+    }
+     
+    analyze.filter();           
+}
+
+analyze.setStartTime = function(){
+   analyze.filters.startTime = document.getElementById('filter-start-time').value;
+   analyze.filter();   
+}
+
+analyze.setEndTime = function(){
+   var end = document.getElementById('filter-end-time').value;
+   if(end != ""){
+     var value = end+" 23:59:59";
+   }else{
+     var value = "";   
+   }
+   analyze.filters.endTime = value;
+   analyze.filter();   
+}
+
+analyze.update = function(){
+   makeFlatData();
+   analyze.filter(); 
+}
+
+analyze.setClient = function(clientId){
+    analyze.filters.clientId = clientId || "all";
+    analyze.filter(); 
+}
+
+analyze.setProject = function(projectId){
+    analyze.filters.projectId = current_project.id || "all";
+    analyze.filter(); 
+}     
+      
+analyze.filter = function (){
+    
+   fs = analyze.filters;
+
+   tempTableData = [];
+   
+   dbg("Filters in analyze.filter()",fs);
+   
+   totalTime = 0;
+   totalBillableTime = 0;  
+   
+   var projectTotal = 0; 
+   var lastRow = {};
+   var clientTotal = 0; 
+   var lastClientId = 0;
+   
+   var stats = {
+      sessions: 0,
+      avgSessionLength: 0,
+      avgSessionsPerTask: 0
+   };
+   
+   for (row in flatData){          
+   
+     if (fs.clientId != "all" && flatData[row].client_id != fs.clientId){ continue; } 
+     if (fs.projectId != "all" && flatData[row].project_id != fs.projectId){ continue; }
+     //if (fs.taskId != "all"  && flatData[row].task_id != fs.taskId){ continue; }     
+     if (fs.startTime != "all" && flatData[row].start_time < fs.startTime){ continue; }      
+     if (fs.endTime && flatData[row].end_time > fs.endTime){ continue; }
+     
+     stats.sessions += 1;
+     
+     if(!current_client){ 
+       if(lastRow.client_id && flatData[row].client_id != lastRow.client_id){ 
+         
+         clientTotalRow = {
+            client: lastRow.client,
+            project:"",
+            task:"",
+            start_time:"",  
+            session_edit:"",
+            durationHMS:timeFromSeconds(clientTotal),
+            durationDecimal: hoursFromSeconds(clientTotal,2),
+            rowType:"client"
+         };
+                                                   
+         tempTableData.push(clientTotalRow);   
+         clientTotal = 0;   
+       }
+     }
+     
+     
+     if(!current_project && current_client){
+       if(lastRow.project_id && flatData[row].project_id != lastRow.project_id){
+         dbg("New project detected");
+         
+         projectTotalRow = {
+            client: lastRow.client,
+            project: lastRow.project,
+            task:"",
+            start_time:"",  
+            session_edit:"",
+            durationHMS:timeFromSeconds(projectTotal),  
+            durationDecimal: hoursFromSeconds(projectTotal,2),
+            rowType:"project"
+         };
+                                             
+         tempTableData.push(projectTotalRow);         
+         projectTotal = 0;
+       }  
+     }
+     
+     if(current_client && current_project){
+        flatData[row].session_edit = '<a class="button" onClick="showGeneralEditForm(\'session\',\''+flatData[row].session_id+'\')">Edit</a>';  
+  
+        flatData[row].durationDecimal = hoursFromSeconds(flatData[row].duration,2),                                                                                          
+        tempTableData.push(flatData[row]);     
+     }
+     
+     clientTotal += flatData[row].duration;          
+     projectTotal += flatData[row].duration;          
+     totalTime += flatData[row].duration;
+     
+     if(flatData[row].billable){
+        totalBillableTime += flatData[row].duration;
+     }
+     
+     lastRow = flatData[row];
+           
+   }
+   
+   if(!current_project && current_client){         
+         projectTotalRow = {
+            client: lastRow.client,
+            project: lastRow.project,
+            task:"",
+            start_time:"",      
+            session_edit:"",
+            durationHMS:timeFromSeconds(projectTotal),
+            durationDecimal: hoursFromSeconds(projectTotal,2),
+            rowType:"project"
+         };                                            
+         tempTableData.push(projectTotalRow);         
+     }
+     
+   if(!current_client){         
+       clientTotalRow = {
+          client: lastRow.client,
+          project:"",
+          task:"",
+          start_time:"",         
+          session_edit:"",
+          durationHMS:timeFromSeconds(clientTotal),
+          durationDecimal: hoursFromSeconds(clientTotal,2),
+          rowType:"client"
+       };
+                                                 
+       tempTableData.push(clientTotalRow);   
+       clientTotal = 0;   
+    }
+                                       
+   analyze.totals.totalTimeHMS = timeFromSeconds(totalTime);   
+   analyze.totals.totalTimeDecimal = hoursFromSeconds(totalTime,2);                                          
+   analyze.totals.totalBillableTimeHMS = timeFromSeconds(totalBillableTime);                           
+   analyze.totals.totalBillableTimeDecimal = hoursFromSeconds(totalBillableTime,2);           
+   analyze.tableData = tempTableData;
+   
+   stats.avgSessionLength = timeFromSeconds(totalTime/stats.sessions);
+   
+   clearTemplate("analyze-data-row-template");
+   
+   for(var i = 0; i < analyze.tableData.length; i++){          
+      template(analyze.tableData[i],"analyze-data-row-template");       
+   }
+   
+   clearTemplate("analyze-totals-template");
+   template(analyze.totals,"analyze-totals-template");  
+           
+   clearTemplate("analyze-stats-template");
+   template(stats,"analyze-stats-template");
+   
+   if(!tempTableData[0]){
+     document.getElementById("no-data-found-table").style.display = "table-row";
+   }else{
+     document.getElementById("no-data-found-table").style.display = "none";           
+   }        
+          
+}  
+
+
+/* ###################### SETTINGS VIEW ############################## */
+
+
+settingsView.show = function(){
+  
+  dbg("settings",ttData.settings);
+ 
+  if(ttData.settings.length != defaultSettings.length){
+      for (key in defaultSettings){
+        if(!ttData.settings[key]){
+           ttData.settings[key] = defaultSettings[key]
+        }      
+      }    
+  }
+  
+  var templateData = [];
+  
+  /* This is a really annoying hack, because the .outerHTML doesn't include voodoo like the current value 
+  of <select> elements, so we can't spit the inputs into the template as strings; template gets filled with placehoder divs,
+  which then get replaced. Ew */
+  
+  var inputs = {};
+  
+  for(field in editFields.settings){
+  
+       inputs[field] = makeFormInput(editFields.settings[field].type,{
+         "value":ttData.settings[field],
+         "id": "settings-"+field+"input"
+       });
+       
+       var templateRow = {
+       label: editFields.settings[field].label,
+       input: '<div id="settings-'+field+'-input-placeholder"></div>'        
+     };
+     
+     templateData.push(templateRow);
+  
+  }
+  
+  
+  template(templateData,"settings-item-template");
+  
+  // Hack continues...
+  for(field in editFields.settings){
+    var phDiv = gebi('settings-'+field+'-input-placeholder');   
+    phDiv.parentNode.replaceChild(inputs[field], phDiv); 
+  }
+  
+  gebi("client-controls").style.display = "none";  
+  gebi("project-controls").style.display = "none";
+    
+}
+
+
+settingsView.hide = function(){  
+  gebi("client-controls").style.display = "block";  
+  gebi("project-controls").style.display = "block";
+}
+
+settingsView.save = function(){
+
+  for(field in editFields.settings){
+     ttData.settings[field] = gebi("settings-"+field+"input").value;
+  }
+  
+  dbg("Settings after save",ttData.settings);
+  ttSave();  
+  setFeedback('Settings updated'); 
 }
 
 
@@ -777,8 +1789,189 @@ function getSetting(name){
 
 
 
-/* ################### GENERAL VIEW UPDATING FUNCTIONS ##################### */ 
+/* ########################## Templating Functions (plus misc DOM helpers) ######################### */
 
+/* Clear clones from a template (prior to updating) */
+function clearTemplate(templateElId){
+   var parent = gebi(templateElId).parentNode;   
+   var oldItems = parent.getElementsByClassName(templateElId+"-clone");
+   
+   while(oldItems.length > 0){
+       oldItems[0].parentNode.removeChild(oldItems[0]);
+   }
+}
+
+/** Main template population function 
+ *data: array of objects (in which case this function loops itself) or object with property name => value pairs to 
+ *with which to populate the template */
+ 
+ 
+var template = function selfTemplate (data,templateElId){
+
+
+   if(data instanceof Array){
+    
+      clearTemplate(templateElId);
+      
+      for(i= 0; i < data.length; i++){
+        selfTemplate(data[i],templateElId);
+      }
+   }else{
+    
+     var template = gebi(templateElId);
+     var parent = template.parentNode;
+     var code = template.innerHTML;
+  
+     templateData = [];
+     
+     for(var name in data){
+        templateData.push({placeholder: "{{"+name+"}}", value: data[name]})
+     }
+     
+        
+     var outputEl = template.cloneNode();
+     
+     outputEl.innerHTML = fillTemplate(templateData,code);
+     
+     /* if data contains an ID field, set the element ID accordingly */
+     if(data.id){
+        outputEl.id = data.id;   
+     }
+     
+     outputEl.className += " "+templateElId+"-clone";
+     if(template.getAttribute("data-clone-display")){
+        outputEl.style.display = template.getAttribute("data-clone-display");   
+     }else{ 
+        outputEl.style.display = null;  
+     }
+     
+     parent.appendChild(outputEl);
+   
+   }
+    
+}
+
+/* Helper to do the placeholder replacement */
+
+function fillTemplate(data,code){
+
+  for(var pairKey in data){
+    var re = new RegExp (data[pairKey].placeholder, 'g');
+    code = code.replace(re,data[pairKey].value);
+  }
+  return code;
+}
+
+
+function makeFormInput(type,attribs){
+
+  var inputEl;
+   
+  if(type == "boolean"){
+    attribs.options = {"no":"No","yes":"Yes"};
+    type = "select";
+  }  
+    
+  if(type == "text"){
+    inputEl = document.createElement("input");
+    inputEl.type = "text";
+  }else if(type == "select"){
+    inputEl = document.createElement('select');
+    for (var optkey in attribs.options){
+      var option = new Option(attribs.options[optkey],optkey);
+      inputEl.options.add(option);               
+    }
+    inputEl.value = "yes"; 
+    inputEl.selectedIndex = 2;
+    inputEl.selected = true;
+    if(attribs.value){
+      inputEl.value = attribs.value;
+    }
+  }else if(type == "textarea"){
+    inputEl = document.createElement("textarea");
+    inputEl.innerHTML = attribs.value || "";    
+  }
+  
+  inputAttributes = ["id","value","name","className","style"];
+  
+  for (i = 0; i < inputAttributes.length; i++){
+  
+     var item = inputAttributes[i];
+    
+     if(attribs[item]){
+        inputEl.setAttribute(item,attribs[item]);       
+     }
+  }
+  document.body.appendChild(inputEl);  
+  return inputEl;
+}
+
+
+function addTableHeaders(id,headers){
+  table = gebi(id);
+  header = table.createTHead();
+  row = header.insertRow(0);
+  
+  count = 0;                                    
+
+  for(text in headers){
+     cell = row.insertCell(count);
+     cell.innerHTML = headers[text];   
+     count += 1;
+  }  
+ 
+  table.appendChild(document.createElement('tbody'));
+        
+}  
+ 
+function addTableRow(id,data,position){
+
+  position || (position = -1);    
+
+  var tbody = gebi(id).getElementsByTagName('tbody')[0];
+ 
+  row = tbody.insertRow(position);  
+  
+  count = 0;
+  for(item in data){
+     cell = row.insertCell(count);
+     cell.innerHTML = data[item];   
+     count += 1;
+  }  
+      
+}
+
+
+
+function makeSelectOptions(itemsObj,isForVue,prepend){
+
+  options = [];
+
+  if(prepend){
+     options.push(prepend);
+  }
+  
+  
+  if(typeof itemsObj == "object"){
+     if(getMemberCount(itemsObj) > 0){
+      for (id in itemsObj){
+        if(isForVue){
+          option = {text:itemsObj[id].name,value:id};
+        }else{
+          option = [id,itemsObj[id].name];
+        }
+           
+        options.push(option);
+        
+      }
+      return options; 
+    }else{
+      return false;
+    }
+  }else{
+    return false;
+  }
+}
 
 
 function updateSelectOptions(target_element,new_options,append){
@@ -861,557 +2054,7 @@ function updateSelectOptionsFromData(type,idSuffix){
 
 
 
-// I think the following seven functions should be removed. They attempt to be too abstract, and fail
-
-
-
-function parentObjectOfCurrent(type){
-  if(type == 'client'){
-    if(typeof current_client == "object"){
-      return ttData;
-    }else{
-      return false;
-    }
-  }else if(type == 'project'){
-    if(typeof current_project == "object"){
-      return current_client;
-    }else{
-      return false;
-    }
-  }else if(type == 'task'){
-    if(typeof current_task == "object"){
-      return current_project;
-    }else{
-      return false;
-    }
-  }
-}
-
-function getCurrent(type){
-
-  if(type == 'client'){
-    if(typeof current_client == "object"){
-      return current_client;
-    }else{
-      return false;
-    }
-  }else if(type == 'project'){
-    if(typeof current_project == "object"){
-      return current_project;
-    }else{
-      return false;
-    }
-  }else if(type == 'task'){
-    if(typeof current_task == "object"){
-      return current_task;
-    }else{
-      return false;
-    }
-  }
-
-}
-
-function getParentType(type){
-  for (var i = 0; i < types.length; i++) {
-     if(types[(i+1)] == type){
-        return types[i];
-     }
-  }
-}
-
-function getChildType(type){
-  for (type_id in types){
-     if(types[(type_id-1)] == type){
-        return types[type_id];
-     }
-  }
-}
-
-function getMemberCount(object){
-  member_count = 0;
-  
-  if(typeof object == "object"){
-    for (item in object){
-       member_count += 1;
-    }
-  }               
-  
-  return member_count;  
-}
-
-function getChildCount(type,object){
-
-  if(typeof object != "object"){
-    return false;
-  }
-       
-  child_type = getChildType(type);
-  children_obj = object[child_type+'s'];
-  
-  child_count = 0;
-  
-  if(typeof children_obj == "object"){
-    for (id in children_obj){
-       child_count += 1;
-    }
-  }               
-  
-  return child_count;  
-}
-
-function updateSectionFromData(type){
-
-  if(!getCurrent(type)){
-    $("#edit-"+type+"-button").hide();
-  }else {
-    $("#edit-"+type+"-button").show();
-  }
-
-   
-  parent_type = getParentType(type);
-  
-  parent_current = getCurrent(parent_type);
-  
-  if(!parent_current && type != 'client'){
-    $("#"+type+"-controls").hide();
-  }else{
-    $("#"+type+"-controls").show();
-  }
-  
-  if (getChildCount(parent_type,parent_current) < 1){
-     $("#"+type+"-select").hide();
-     $("#add-"+type+"-form").show();
-  }else{
-     $("#"+type+"-select").show();
-     $("#add-"+type+"-form").hide();  
-  }
-}
-
-
-
-
-
-/* ########################### DATA MODEL FUNCTIONS ######################### */
-
-
-function updateDataObject(level,data){
-  if(level == 'client'){
-    ttData.clients[current_client.id] = data;
-  }
-  if(level == 'project'){
-    ttData.clients[current_client.id].projects[current_project.id] = data;
-  }
-  if(level == 'task'){
-    ttData.clients[current_client.id].projects[current_project.id].tasks[current_task.id] = data;
-  }
-  if(level == 'session'){
-    if(typeof ttData.clients[current_client.id].projects[current_project.id].tasks[current_task.id].sessions != "object"){
-       ttData.clients[current_client.id].projects[current_project.id].tasks[current_task.id].sessions = {};
-    }
-    ttData.clients[current_client.id].projects[current_project.id].tasks[current_task.id].sessions[data.id] = data;
-  }
-}
-
-
-function ttSave(){
-
-  localStorage.ttData = JSON.stringify(ttData);
-  
-}
-
-function ttSaveCurrent(){
-  
-  if(current_client){
-    
-      localStorage.ttClientId = current_client.id;
-   
-      if(current_project){
-         
-          localStorage.ttProjectId = current_project.id;
-      
-          if(current_task){   
-            localStorage.ttTaskId = current_task.id;
-            
-            if(current_session){
-               localStorage.ttSessionId = current_session.id;
-            }
-            
-            
-          }
-      
-      }else{
-        dbg('Client but no project found');
-      }
-    
-  }else{
-    dbg('No current client found');
-  }  
-   
-}
-
-
-function saveUserKey(){
-
-  key_val = $("#add-userkey-input").val();
-  ttData.userKey = key_val;
-  
-  ttSave();
-  
-  $("#modal-bg").hide(); 
-  $("#edit-popup").hide();  
-  $("#edit-popup").html('');
-  
-  addClientForm();
-  
-  //ttInit();
-  
-}
-
-function deleteLocalStorage(){
-
-  delete localStorage.ttData;
-  delete localStorage.ttClientId;   
-  delete localStorage.ttProjectId;  
-  delete localStorage.ttTaskId;    
-  delete localStorage.ttSessionId;
-  setFeedback('LocalStorage deleted. Refresh to see changes.');
-
-}
-
-
-/* ############################# EDIT FUNCTIONS ############################# */
-
-
-function editJson(){
-
-  document.getElementById('json-output').innerHTML = '<form><textarea id="edit-json-textarea">'+JSON.stringify(ttData,null,'   ')+'</textarea></form><a href="#void" class="button" onClick="saveJson()">Save</a>';
-}
-
-function saveJson(){
-   input_json = $("#edit-json-textarea").val();
-   
-   try{
-      input_data = JSON.parse(input_json);
-   }catch(err){
-      setFeedback('Oops! JSON input is invalid. Error: '+err,'error');
-      return;
-   }
-     
-   ttData = input_data;  
-   ttSave();   
-   setFeedback('JSON data saved.');
-   $("#json-output").hide();    
-}
-
-
-function cancelEditForm(){
-  $('#edit-popup').html(''); 
-  $('#modal-bg').hide(); 
-  $('#edit-popup').hide();
-}
-
-
-function saveEditForm(type){
-
-  if(type == 'client'){    
-    properties = current_client;
-  }else if(type == 'project'){
-    properties = current_project;
-  }else if(type == 'task'){
-    properties = current_task;
-  }else if(type == 'session'){
-    session_id = $("#session_id-input").val();
-    properties = current_task.sessions[session_id];
-  }else if(type == 'settings'){
-    properties = ttData.settings;
-  }
-    
-  for (key in properties){                                                                 
-    if(typeof properties[key] != "object"){
-      properties[key] = document.getElementById(type+"-"+key+"-edit-input").value;      
-    }
-  }
-  
- 
-  updateDataObject(type,properties);
-  
-  if(type != "session" && type != "settings"){
-    updateSelectOptionsFromData(type);  
-  }                
-
-     
-  ttSave();  
-  setFeedback('Item updated');  
-  cancelEditForm();
-  
-}
-
-function saveGeneralEditForm(type,id){
-
-  if(type == 'settings'){
-    var item = ttData.settings;
-  }else{
-    var item = getItemById(type,id)
-  }
-  
-  /* 
-  for (key in properties){                                                                 
-    if(typeof properties[key] != "object"){
-      dbg("getting props for",key);
-      
-      if(document.getElementById(type+"-"+key+"-edit-input")){
-        item[key] = document.getElementById(type+"-"+key+"-edit-input").value;         
-      }   
-    }
-  }
-  */ 
-   
-  
-  // var item =  JSON.parse(JSON.stringify(item));
-                                        
-  dbg("Type in edit",type);                   
-  dbg("ID in edit",id); 
-  
-  dbg("Item in save before edit",item);  
-  dbg("editFields",editFields[type]);
-  
-  for (key in editFields[type]){
-    if(document.getElementById(type+"-"+key+"-edit-input")){
-      item[key] = document.getElementById(type+"-"+key+"-edit-input").value;
-    }else{
-      dbg("Field not found in edit form:",key);
-    }
-  }        
-      
-    
-                    
-  dbg("Item in save after edit",item);
-  
-  /* This is excessively lame, and is only here because of issues with Vue.js... */
-  if(type == "task"){
-    item.displayStatus = editFields.task.status.options[item.status];
-  }
-  
-  updateItemById(type,id,item);
-  
-  if(type != "session" && type != "settings" && type != "task"){
-    updateSelectOptionsFromData(type);  
-  }                
-     
-  ttSave();  
-  setFeedback('Item updated');  
-  cancelEditForm();
-  
-  if(typeof currentView.update == "function"){
-    currentView.update();
-  }
-} 
-
-function deleteGeneralFromEditForm(type,id){
-
-  dbg('deleteGeneralFromEditForm() with:',[type,id]); 
-
-  deleteItemById(type,id);
-   
-  if(type != "session" && type != "task"){
-    updateSelectOptionsFromData(type);   
-  }
-   
-  ttSave(); 
-  cancelEditForm(); 
-  
-  setFeedback(type+' deleted.');
-  
-  // Temporary test mockup of event-based strategy...
-  
-  emitEvent("task","deleted"); 
-  
-} 
-
-
-function deleteFromEditForm(type){
-
-  dbg(type,'Deleting type:');
-
-  if(type == 'client'){
-    delete ttData.clients[current_client.id];
-    
-    current_client = '';
-    current_project = ''; 
-    current_task = '';
-    $("#task-controls").hide(); 
-    $("#project-controls").hide();
-           
-  }else if(type == 'project'){
-  
-    delete current_client.projects[current_project.id];
-    current_project = '';          
-    update_type = 'client'; 
-    update_data = current_client;
-    
-  }else if(type == 'task'){
-  
-    delete current_project.tasks[current_task.id]; 
-    current_task = '';    
-    update_type = 'project';    
-    update_data = current_project;
-    
-  }else if(type == 'session'){
-    session_id = $("#session_id-input").value;
-    delete current_task.sessions[session_id];      
-    update_type = 'task';
-    update_data = current_task;
-  }
-  
-  if(type != 'client'){
-    updateDataObject(update_type,update_data);   
-  }
-   
-  if(type != "session" && type != "task"){
-    updateSelectOptionsFromData(type);   
-  }
-
-  if(typeof currentView.update == "function"){
-    currentView.update();
-  }
-   
-  ttSave(); 
-  cancelEditForm(); 
-  setFeedback(type+' deleted.');
-  
-} 
-
-/* Edit form that doesn't require current values to be set */
-
-function showGeneralEditForm(type,id){
-   dbg('showGeneralEditForm called with type',type); 
-   dbg('id',id);
-   
-   edit_element = document.getElementById("edit-popup");
-                      
-  $("#edit-popup").html("<form>");
-  
-  dbg($("#edit-popup"));
-
-  properties = getItemById(type,id);
-  
-  
-  for (key in editFields[type]){
-  
-    var field = editFields[type][key];
-                                                                     
-    if(typeof properties[key] != "object" && properties[key]){
-      var val = properties[key];
-    }else if(field.defaultVal){
-      var val = field.defaultVal;
-    }else{
-      var val = "";
-    }
-    
-    if(field.type == "text"){
-         $("#edit-popup").append('<div class="edit-field">'+field.label+' <input type="text" value="'+val+'" id="'+type+'-'+key+'-edit-input"/></div>');
-    }else if(field.type == "select"){
-    
-         var fieldDiv = document.createElement('div'); 
-         fieldDiv.className = "edit-field";
-         
-         fieldDiv.innerHTML = field.label
-         
-         var select = document.createElement('select');
-         select.id = type+'-'+key+'-edit-input';
-         /*
-         for (var optkey in field.options){
-            if(typeof field.options[optkey] == "object"){
-              var optionVal = field.options[optkey].value; 
-              var optionTxt = field.options[optkey].text;
-            }else{                           
-              var optionVal = optionTxt = field.options[optkey];          
-            }
-            var option = new Option(optionTxt,optionVal);
-            select.options.add(option);               
-         }
-         */
-         
-         for (var optkey in field.options){
-            var option = new Option(field.options[optkey],optkey);
-            select.options.add(option);               
-         }         
-         
-         select.value = val;
-         
-         fieldDiv.appendChild(select);         
-         $("#edit-popup").append(fieldDiv);
-          
-    }else if(field.type == "textarea"){
-         $("#edit-popup").append('<div class="edit-field">'+field.label+' <textarea id="'+type+'-'+key+'-edit-input">'+val+'</textarea></div>');
-    }   
- 
-  }
-    
-  $("#edit-popup").append('<div>');
-  $("#edit-popup").append('<a class="button" onClick="saveGeneralEditForm(\''+type+'\',\''+id+'\')">Save</a>');
-  $("#edit-popup").append('<a class="button" onClick="cancelEditForm()">Cancel</a>');
-  
-  if(type != "settings"){
-    $("#edit-popup").append('<a class="button red" onClick="deleteGeneralFromEditForm(\''+type+'\',\''+id+'\')">Delete Item</a></div></form>');
-  }  
-  
-  $("#modal-bg").show(); 
-  $("#edit-popup").show();                  
-
-}
-
-function showEditForm(type,id){
-   dbg('showEditForm called with type',type);
-   
-   edit_element = document.getElementById("edit-popup");
-                      
-  $("#edit-popup").html("<form>");
-  
-  dbg($("#edit-popup"));
-
-  if(type == 'client'){    
-    properties = current_client;
-  }else if(type == 'project'){
-    properties = current_project;
-    
-  }else if(type == 'task'){
-    properties = current_task;
-  }else if(type == 'session'){
-    session_id = document.getElementById("session_id-input").value;
-    properties = current_task.sessions[session_id];
-  }else if(type == "settings"){  
-    properties = ttData.settings;
-  } 
-  
-  for (key in properties){                                                                 
-    if(typeof properties[key] != "object"){
-      $("#edit-popup").append('<div>'+key+' <input type="text" value="'+properties[key]+'" id="'+type+'-'+key+'-edit-input"/></div>');
-    }
-  }
-  
-  $("#edit-popup").append('<div>');
-  $("#edit-popup").append('<a class="button" onClick="saveEditForm(\''+type+'\')">Save</a>');
-  $("#edit-popup").append('<a class="button" onClick="cancelEditForm()">Cancel</a>');
-  
-  if(type != "settings"){
-    $("#edit-popup").append('<a class="button red" onClick="deleteFromEditForm(\''+type+'\')">Delete Item</a></div></form>');
-  }  
-  
-  $("#modal-bg").show(); 
-  $("#edit-popup").show();                  
-
-
-}
-
-
-
-
-
 /* ############################ SERVER SYNCHING ############################  */
-
-
-
 
 
 function synchToServer(){ 
@@ -1502,7 +2145,7 @@ function nodeRequest(direction){
     var postData = JSON.stringify(ttData); 
     reqAction = 'synchToServer';
     
-    dbg(postData,"Node synching to server with:");
+    //dbg(postData,"Node synching to server with:");
     
   }else{
     reqAction = 'synchFromServer';
@@ -1522,22 +2165,22 @@ function nodeRequest(direction){
 
   var request = http.request(options, function(result){
   
-    console.log('STATUS:'+result.statusCode);
-    console.log('HEADERS:'+JSON.stringify(result.headers));
+    //console.log('STATUS:'+result.statusCode);
+    //console.log('HEADERS:'+JSON.stringify(result.headers));
     
     result.setEncoding('utf8');
     
     var resultData = '';
     
     result.on('data', function(chunk){
-      console.log('BODY:'+chunk);
+      //console.log('BODY:'+chunk);
       resultData += chunk;
     });
     
     result.on('end', function(){
-      console.log('No more data in response.');
-      console.log(result);     
-      console.log(resultData);
+      //console.log('No more data in response.');
+      //console.log(result);     
+      //console.log(resultData);
       
       if(result.statusCode == 200){
          
@@ -1569,7 +2212,7 @@ function nodeRequest(direction){
   });
 
   request.on('error', function(e){
-    console.log('problem with request:'+e.message);
+    //console.log('problem with request:'+e.message);
     setFeedback('Error synching to server: '+e.message);
   });
 
@@ -1579,16 +2222,7 @@ function nodeRequest(direction){
 }
 
 
-/* ######################### Analyze View Functions ######################### */
-
-function setFilterStartTime(){
-  showSessions();
-}
-
-function setFilterEndTime(){
-  showSessions();
-}
-
+/* ######################### Data Handling Functions ######################### */
 
 function makeFlatData(){
   flatData = {};
@@ -1615,7 +2249,8 @@ function makeFlatData(){
                   "task_id" : task_id,
                   "billable" : tasks[task_id].billable,
                   "start_time" :  session.start_time, 
-                  "end_time" :  session.end_time,
+                  "end_time" :  session.end_time,       
+                  "session_id" :  session_id,
                   "duration" : timeDiffSecsFromString(session.start_time,session.end_time), 
                   "durationHMS" : timeFromSeconds(timeDiffSecsFromString(session.start_time,session.end_time))
                 
@@ -1629,193 +2264,33 @@ function makeFlatData(){
   }
 }
 
+/* This is kind of a silly function and should probably be removed */
+function filterFlatData(fs,callback){
 
-function showProjectTime(projectId){
-   
-  var prj = current_project;   
-  
-  gebi("analytics-view-title").innerHTML = "Project Time: "+current_project.name;
-
-  $("#datatable").html(''); 
-  
-  addTableHeaders("datatable",["Task","Time"]);
-      
-  prj.totalTime = 0;  
-  prj.totalBillableTime = 0;
-  
-  for (task_id in prj.tasks){
-    taskTotalTime = 0;        
-    taskSessionCount = 0;   
-  
-    task = prj.tasks[task_id]; 
-    
-    if(typeof task.sessions == "object"){
-        
-        if(getMemberCount(task.sessions) > 0){
-        
-          for (session_id in task.sessions){
-            ses = task.sessions[session_id];
-            if(ses.start_time && ses.end_time){
-               duration = timeDiffSecsFromString(ses.start_time,ses.end_time);
-               
-               dbg('Getting time diff. Start:'+ses.start_time+" End: "+ses.end_time+" Diff: "+duration);
-               
-            }else{
-              duration = 0;
-            }            
-            taskTotalTime += duration; 
-            taskSessionCount += 1;      
-          }
-          
-        
-       
-          if(task.billable == true){
-             prj.totalBillableTime += taskTotalTime;
-          }
-          
-          prj.totalTime = prj.totalTime+taskTotalTime;          
-          
-          addTableRow("datatable",[task.name+" ("+taskSessionCount+")",timeFromSeconds(taskTotalTime)]);
-        }
-     }
-  }
-                                                                                           
-  addTableRow("datatable",["<b>Project billable time</b>","<b>"+timeFromSeconds(prj.totalBillableTime)+"</b>"]);
-  addTableRow("datatable",["<b>Project total time</b>","<b>"+timeFromSeconds(prj.totalTime)+"</b>"]);
-  
-  $("#track-view").hide();
-  $("#analytics-view").show();
-
-}
-
-function addTableHeaders(id,headers){
-  table = gebi(id);
-  header = table.createTHead();
-  row = header.insertRow(0);
-  
-  count = 0;                                    
-
-  for(text in headers){
-     cell = row.insertCell(count);
-     cell.innerHTML = headers[text];   
-     count += 1;
-  }  
- 
-  table.appendChild(document.createElement('tbody'));
-        
-}  
- 
-function addTableRow(id,data,position){
-
-  position || (position = -1);    
-
-  var tbody = gebi(id).getElementsByTagName('tbody')[0];
- 
-  row = tbody.insertRow(position);  
-  
-  count = 0;
-  for(item in data){
-     cell = row.insertCell(count);
-     cell.innerHTML = data[item];   
-     count += 1;
-  }  
-      
-}
-
-
-
-function makeSelectOptions(itemsObj,isForVue,prepend){
-
-  options = [];
-
-  if(prepend){
-     options.push(prepend);
-  }
-  
-  
-  if(typeof itemsObj == "object"){
-     if(getMemberCount(itemsObj) > 0){
-      for (id in itemsObj){
-        if(isForVue){
-          option = {text:itemsObj[id].name,value:id};
-        }else{
-          option = [id,itemsObj[id].name];
-        }
-           
-        options.push(option);
-        
-      }
-      return options; 
-    }else{
-      return false;
-    }
-  }else{
-    return false;
-  }
-}
-
-
-
-function setView(view){
-
-    if(typeof currentView.hide == "function"){
-      currentView.hide();
-    }
-    
-    if(view == "analyze"){
-      currentView = analyze;
-    }else if(view == "taskList"){
-      currentView = taskList;
-    }else if(view == "settingsView"){
-      currentView = settingsView;
-    }
-    
-    viewElements = document.getElementsByClassName("view-container");
-
-    for (var i = 0; i < viewElements.length; ++i){
-       if(viewElements[i].id == view+"-view"){
-          viewElements[i].style.display = "block";
-       }else{
-          viewElements[i].style.display = "none";       
-       }
-    }
-    
-    if(typeof currentView.show == "function"){
-      currentView.show();
-    }
-}
-
-
-
-function filterFlatData(fs){
-
-   tempTableData = [];
-   
-   totalTime = 0;
-   totalBillableTime = 0;
+   var tempTableData = [];   
    
    for (var row in flatData){          
    
-     if (fs.clientId != "all" && flatData[row].client_id != fs.clientId){ continue; } 
-     if (fs.projectId != "all" && flatData[row].project_id != fs.projectId){ continue; }
-     //if (fs.taskId != "all"  && flatData[row].task_id != fs.taskId){ continue; }     
-     if (fs.startTime != "all" && flatData[row].start_time < fs.startTime){ continue; }      
-     if (fs.endTime && flatData[row].end_time > fs.endTime){ continue; } 
-                                                                                    
+     if (fs.clientId && fs.clientId != "all" && flatData[row].client_id != fs.clientId){ continue; } 
+     if (fs.projectId && fs.projectId != "all" && flatData[row].project_id != fs.projectId){ continue; }
+     if (fs.taskId && fs.taskId != "all"  && flatData[row].task_id != fs.taskId){ continue; }     
+     if (fs.startTime && fs.startTime != "all" && flatData[row].start_time < fs.startTime){ continue; }      
+     if (fs.endTime && fs.endTime && flatData[row].end_time > fs.endTime){ continue; }                                                                                     
 
      tempTableData.push(flatData[row]);
      
-     totalTime += flatData[row].duration;
-     
-     if(flatData[row].billable){
-        totalBillableTime += flatData[row].duration;
-     }
-           
-   }
-              
-   return [tempTableData,totalTime,totalBillableTime];
+     if(typeof callback == "function"){
+        callback.call(flatData[row]);
+     }          
+   }              
+   return tempTableData;
 } 
 
+
+
+/** ############################# The Big Snazzy Data Looper Function ########################### */ 
+/**This is the big boss function that does all the things. I wouldn't recommend editing it, because it's
+ * kinda gnarly. More documentation later */
     
 function loopData(fs,func){
   
@@ -1881,17 +2356,40 @@ function loopData(fs,func){
             // Callback
             if(func){
               res = func.call({level:"task", client : ttData.clients[client_id],project : projects[project_id], task:  tasks[task_id]});
-              if (res == "break"){
-                
+              if (res == "break"){                
                 return;
-              }     
+              }else if(res == "continue"){
+                continue taskLoop;
+              }    
             }          
           
            
-            if(typeof tasks[task_id].sessions == "object" && getMemberCount(tasks[task_id].sessions) > 0){           
-              for (var session_id in tasks[task_id].sessions){              
-                session = tasks[task_id].sessions[session_id];
-                             
+            if(typeof tasks[task_id].sessions == "object" && getMemberCount(tasks[task_id].sessions) > 0){
+              sessions = tasks[task_id].sessions;           
+              sessionLoop: for (var session_id in sessions){  
+                          
+                // Filter
+                for(key in fs){
+                  if(fs[key].type == "session"){ 
+                    if(!filterMatch(fs[key].value,sessions[session_id][fs[key].field],fs[key].condition)){
+                      continue sessionLoop;
+                    }
+                  }
+                }
+                
+                // Callback
+                if(func){
+                  res = func.call({
+                    level:"session", 
+                    client : ttData.clients[client_id],
+                    project : projects[project_id],  
+                    task:  tasks[task_id],
+                    session: sessions[session_id]
+                  });
+                  if (res == "break"){
+                    return;
+                  }     
+                }                          
               }
             }
           }
@@ -1938,7 +2436,7 @@ function getItemById(type,id){
   
   return wantedItem;
 }
-// Get a particular item out of the data array, regardless of what's current
+// Get a particular branch out of the data array, regardless of what's current
 function getBranchById(type,id){
    
   var branch = {};
@@ -1958,7 +2456,7 @@ function updateItemById(type,id,data){
     dbg("updateItemById(type,id,data)",[type,id,data]);
 
     if(type == 'client'){
-      ttData.cleints[id] = data;
+      ttData.clients[id] = data;
     }else{
       loopData([{type:type,value:id,field:"id",condition:"equals"}],function(){
         if(this.level == type){
@@ -1977,7 +2475,7 @@ function updateItemById(type,id,data){
     
 function deleteItemById(type,id){
     if(type == 'client'){
-      delete ttData.cleints[id];
+      delete ttData.clients[id];
     }else{
       loopData([{type:type,value:id,field:"id",condition:"equals"}],function(){
         if(this.level == type){
@@ -1993,6 +2491,87 @@ function deleteItemById(type,id){
       });    
     }  
 } 
+
+
+/* Older version, based on current values (don't use) */
+function updateDataObject(level,data){
+  if(level == 'client'){
+    ttData.clients[current_client.id] = data;
+  }
+  if(level == 'project'){
+    ttData.clients[current_client.id].projects[current_project.id] = data;
+  }
+  if(level == 'task'){
+    ttData.clients[current_client.id].projects[current_project.id].tasks[current_task.id] = data;
+  }
+  if(level == 'session'){
+    if(typeof ttData.clients[current_client.id].projects[current_project.id].tasks[current_task.id].sessions != "object"){
+       ttData.clients[current_client.id].projects[current_project.id].tasks[current_task.id].sessions = {};
+    }
+    ttData.clients[current_client.id].projects[current_project.id].tasks[current_task.id].sessions[data.id] = data;
+  }
+}
+
+
+function getCurrent(type){
+  if(type == "client"){
+    return current_client;
+  }else if(type == "project"){
+    return current_project;
+  }else if(type == "task"){
+    return current_task;
+  }else if(type == "session"){
+    return current_session;
+  }
+}
+
+function ttSave(){
+
+  localStorage.ttData = JSON.stringify(ttData);
+  
+}
+
+function ttSaveCurrent(){
+
+  dbg("Saving current values");
+  dbg("Client",current_client);
+  dbg("Project",current_project);
+  dbg("Task",current_task);
+  
+  if(current_client){
+    
+      localStorage.ttClientId = current_client.id;
+   
+      if(current_project){
+         
+          localStorage.ttProjectId = current_project.id;
+      
+          if(current_task){   
+            localStorage.ttTaskId = current_task.id;
+            
+            if(current_session){
+               localStorage.ttSessionId = current_session.id;
+            }
+            
+            
+          }
+      
+      }else{
+        //dbg('Current client but no project found');
+        delete localStorage.ttProjectId;
+        delete localStorage.ttTaskId;
+      }
+    
+  }else{
+    //dbg('No current client found');
+  }  
+   
+}
+
+
+
+/* ####################### TIME & DATE FUNCTIONS ########################## */
+
 
 function prettyTime(s){
     var hours = parseInt(s/3600) % 24;
@@ -2024,610 +2603,91 @@ function prettyTime(s){
     return out;
 } 
 
+function timeFromSeconds(s){
 
-/*  TASK LIST FUNCTIONS */
+    var hours = parseInt(s/3600);
+    var minutes = parseInt(s/60) % 60;
+    var seconds = parseInt(s) % 60;
 
-function filterTaskList(){
-            
-    taskList.tasks = [];
-              
-    var fs = [];
-    
-    if(taskList.clientFilter){
-      fs.push(taskList.clientFilter);
-    }
-    if(taskList.projectFilter){
-      fs.push(taskList.projectFilter);
-    }
-    
-    dbg("Filtering task list",fs);
-    
-     
-    loopData(fs,function(){ 
-      if(this.task){ 
-        
-        if(!this.task.time){
-          this.task.time = 0;
-          for (var sesId in this.task.sessions){
-          
-            this.task.time += timeDiffSecsFromString(this.task.sessions[sesId].start_time,this.task.sessions[sesId].end_time);
-          }
-        }
-        
-        if(this.task.time > 0){
-          this.task.prettyTime = prettyTime(this.task.time);
-        }else{
-          this.task.prettyTime = '';
-        }
-        
-        this.task.displayStatus = editFields.task.status.options[this.task.status];
-                            
-        taskList.tasks.push(this.task);                  
-      }                         
-    });
-    
-                
-   if(taskList.tasks.length < 1){
-     document.getElementById("no-data-found-table").style.display = "table-row";
-   }else{
-     document.getElementById("no-data-found-table").style.display = "none";           
-   }
-   
-   taskList.sort();
-                                  
+    return (hours < 10 ? "0" + hours : hours) + ":" + (minutes < 10 ? "0" + minutes : minutes) + ":" + (seconds  < 10 ? "0" + seconds : seconds);
+
 }
 
-taskList.sort = function(field){
-  sortTaskList(field);
-};
-
-taskList.filter = function(field){
-  filterTaskList(field);
-};
-
-
-taskList.hideNewTaskForm = function(){
-  gebi("task-form").style.display = "none";
-}
-       
-function sortTaskList(field){
-
-    dbg("Sorting task list by",field);
-
-    if(field){
-      taskList.sortBy = field;
-    }
-
-    taskList.tasks.sort(function(a, b) {
-   
-      if(!a[taskList.sortBy]){
-        a[taskList.sortBy] = '';
-      }                   
-      if(!b[taskList.sortBy]){
-        b[taskList.sortBy] = '';
-      }
-      
-      //dbg("Sorting: "+JSON.stringify(a)+" against:"+JSON.stringify(b));
-      
-      return a[taskList.sortBy].toString().localeCompare(b[taskList.sortBy].toString());          
-   });
-   
-   taskList.update();                     
-}
-
-taskList.update = function(){ 
-
-   dbg("Updating DOM with "+taskList.tasks.length.toString()+" tasks");
-                                                     
-   var addTaskForm = gebi("tasklist-new-task-form");
-   var templateEl = gebi('task-list-item-template');
-   
-   
-   var template = templateEl.innerHTML;
-   
-   var listContainer = templateEl.parentNode; 
-   
-   listContainer.innerHTML = '';
-   
-   if(gebi("project-select").value != "all" && gebi("project-select").value != ""){
-     addTaskForm.style.display = "block";  
-   }else{
-     addTaskForm.style.display = "none";     
-   }
-   
-   listContainer.appendChild(addTaskForm); 
-   listContainer.appendChild(templateEl);
-
-  for (taskListKey in taskList.tasks){
-     var task = taskList.tasks[taskListKey]; 
-     
-     if(taskList.hideCompletedTasks == false || task.status != "completed"){
-  
-       var templateData = [];   
-              
-       for (taskKey in task){ 
-          templateData.push({placeholder: "{{task."+taskKey+"}}", value: task[taskKey]});     
-       }
-       
-       if(task.status == "completed"){       
-         var completedFlag = "checked";       
-       }else{    
-         var completedFlag = "";       
-       }
-       
-       var completedInput = "<input type=\"checkbox\" name=\"task-completed\" "+completedFlag+" onClick=\"setTaskComplete('"+task.id+"')\"/>";
-       
-       templateData.push({placeholder:"{{checkCompleted}}",value: completedInput});  
-       
-       
-       if(task.prettyTime){       
-         var metaSeparator = "|";       
-       }else{    
-         var metaSeparator = "";       
-       }
-              
-       templateData.push({placeholder:"{{metaSeparator}}",value: metaSeparator});      
-            
-       var taskEl = templateEl.cloneNode(false);
-       taskEl.id = "task-"+task.id;
-       taskEl.style.display = "block";
-       taskEl.innerHTML = fillTemplate(templateData,template);
-       templateEl.parentNode.appendChild(taskEl);     
-     }
+function hoursFromSeconds(s,round){
+  if(round){
+    return (s/3600).toFixed(round);
+  }else{
+    return (s/3600);
   }
-  
-  templateEl.style.display = "none";
-  
-}
-
-function clearTemplate(templateElId){
-   var template = gebi(templateElId);
-   var parent = template.parentNode;
-   
-   var oldItems = parent.getElementsByClassName(templateElId+"-clone");
-   
-   while(oldItems.length > 0){
-       oldItems[0].parentNode.removeChild(oldItems[0]);
-   }
 }
 
 
-var template = function selfTemplate (data,templateElId){
+function timeDiffSecsFromString(dateStr1,dateStr2){
 
-   if(data instanceof Array){
+    date1 = new Date(dateStr1.replace(' ','T'));  
+    date2 = new Date(dateStr2.replace(' ','T'));
     
-      clearTemplate(templateElId);
-      
-      for(i= 0; i < data.length; i++){
-        selfTemplate(data[i],templateElId);
-      }
-   }else{
-
-     //dbg("template()",data);
+    diffMs = date2.getTime() - date1.getTime();
     
-     var template = gebi(templateElId);
-     var parent = template.parentNode;
-     var code = template.innerHTML;
-  
-     templateData = [];
-     
-     for(var name in data){
-        templateData.push({placeholder: "{{"+name+"}}", value: data[name]})
-     }
-     
-        
-     var outputEl = template.cloneNode();
-     
-     outputEl.innerHTML = fillTemplate(templateData,code);
-     
-     if(data.id){
-        outputEl.id = data.id;   
-     }
-     
-     outputEl.className += " "+templateElId+"-clone";
-     if(template.getAttribute("data-clone-display")){
-        outputEl.style.display = template.getAttribute("data-clone-display");   
-     }else{ 
-        outputEl.style.display = null;  
-     }
-     
-     parent.appendChild(outputEl);
-   
-   }
-    
-}
-
-function fillTemplate(data,code){
-
-  for(var pairKey in data){
-    var re = new RegExp (data[pairKey].placeholder, 'g');
-    code = code.replace(re,data[pairKey].value);
-  }
-  return code;
-}
-
-taskList.hideCompleted = function(){
-   taskList.hideCompletedTasks = gebi("hide-completed").checked ? true : false;   
-   taskList.update();
-} 
-
-
-/* ANALYZE VIEW */
-
-analyze.show = function(){
-
-    makeFlatData();
-    
-    var tableFields = {
-      client:"Client",
-      project:"Project",
-      task:"Task",
-      start_time:"Start Time",
-      duration:"Duration"
-    };
-    
-
-    
-    analyze.totals = {};             
-    analyze.totals.totalTimeHMS = '';
-    analyze.totals.totalBillableTimeHMS = '';               
-    analyze.tableData = flatData; 
-          
-    analyze.filters = {
-            clientId : current_client.id || "all",
-            projectId : current_project.id || "all", 
-            taskId : "all",
-            startTime : "all",
-            endTime : "all"       
-    }
-
-       
-    if(!analyze.startPicker){   
-      analyze.startPicker = new Pikaday({
-          field: document.getElementById('filter-start-time'),
-          format: 'YYYY-MM-DD'//,
-       //   onSelect: function() {
-       //      analyze.filters.startTime = document.getElementById('filter-start-time').value;
-       //      analyze.filter();
-       //   }
-      });
-    }
-    
-    if(!analyze.endPicker){
-      analyze.endPicker = new Pikaday({
-          field: document.getElementById('filter-end-time'),
-          format: 'YYYY-MM-DD'//,
-         // onSelect: function() {
-         //    analyze.filters.endTime = document.getElementById('filter-end-time').value+" 23:23:59";
-         //    analyze.filter();
-         // }
-      });
-      console.log(analyze.endPicker);
-    }
-     
-    analyze.filter();           
-}
-
-analyze.setStartTime = function(){
-   analyze.filters.startTime = document.getElementById('filter-start-time').value;
-   analyze.filter();   
-}
-
-analyze.setEndTime = function(){
-   var end = document.getElementById('filter-end-time').value;
-   if(end != ""){
-     var value = end+" 23:59:59";
-   }else{
-     var value = "";   
-   }
-   analyze.filters.endTime = value;
-   analyze.filter();   
-}
-
-analyze.setClient = function(clientId){
-    analyze.filters.clientId = clientId || "all";
-    analyze.filter(); 
-}
-
-analyze.setProject = function(projectId){
-    analyze.filters.projectId = current_project.id || "all";
-    analyze.filter(); 
-}     
-      
-analyze.filter = function (){
-    
-   fs = analyze.filters;
-
-   tempTableData = [];
-   
-   dbg("Filters in analyze.filter()",fs);
-   
-   totalTime = 0;
-   totalBillableTime = 0;  
-   
-   var projectTotal = 0; 
-   var lastRow = {};
-   var clientTotal = 0; 
-   var lastClientId = 0;
-   
-   var stats = {
-      sessions: 0,
-      avgSessionLength: 0,
-      avgSessionsPerTask: 0
-   };
-   
-   for (row in flatData){          
-   
-     if (fs.clientId != "all" && flatData[row].client_id != fs.clientId){ continue; } 
-     if (fs.projectId != "all" && flatData[row].project_id != fs.projectId){ continue; }
-     //if (fs.taskId != "all"  && flatData[row].task_id != fs.taskId){ continue; }     
-     if (fs.startTime != "all" && flatData[row].start_time < fs.startTime){ continue; }      
-     if (fs.endTime && flatData[row].end_time > fs.endTime){ continue; }
-     
-     stats.sessions += 1;
-     
-     if(!current_client){ 
-       if(lastRow.client_id && flatData[row].client_id != lastRow.client_id){ 
-         
-         clientTotalRow = {
-            client: lastRow.client,
-            project:"",
-            task:"",
-            start_time:"",
-            durationHMS:timeFromSeconds(clientTotal),
-            durationDecimal: hoursFromSeconds(clientTotal,2),
-            rowType:"client"
-         };
-                                                   
-         tempTableData.push(clientTotalRow);   
-         clientTotal = 0;   
-       }
-     }
-     
-     
-     if(!current_project && current_client){
-       if(lastRow.project_id && flatData[row].project_id != lastRow.project_id){
-         dbg("New project detected");
-         
-         projectTotalRow = {
-            client: lastRow.client,
-            project: lastRow.project,
-            task:"",
-            start_time:"",
-            durationHMS:timeFromSeconds(projectTotal),  
-            durationDecimal: hoursFromSeconds(projectTotal,2),
-            rowType:"project"
-         };
-                                             
-         tempTableData.push(projectTotalRow);         
-         projectTotal = 0;
-       }  
-     }
-     
-     if(current_client && current_project){
-        flatData[row].durationDecimal = hoursFromSeconds(flatData[row].duration,2),                                                                                          
-        tempTableData.push(flatData[row]);     
-     }
-     
-     clientTotal += flatData[row].duration;          
-     projectTotal += flatData[row].duration;          
-     totalTime += flatData[row].duration;
-     
-     if(flatData[row].billable){
-        totalBillableTime += flatData[row].duration;
-     }
-     
-     lastRow = flatData[row];
-           
-   }
-   
-   if(!current_project && current_client){         
-         projectTotalRow = {
-            client: lastRow.client,
-            project: lastRow.project,
-            task:"",
-            start_time:"",
-            durationHMS:timeFromSeconds(projectTotal),
-            durationDecimal: hoursFromSeconds(projectTotal,2),
-            rowType:"project"
-         };                                            
-         tempTableData.push(projectTotalRow);         
-     }
-     
-   if(!current_client){         
-       clientTotalRow = {
-          client: lastRow.client,
-          project:"",
-          task:"",
-          start_time:"",
-          durationHMS:timeFromSeconds(clientTotal),
-          durationDecimal: hoursFromSeconds(clientTotal,2),
-          rowType:"client"
-       };
-                                                 
-       tempTableData.push(clientTotalRow);   
-       clientTotal = 0;   
-    }
-   
-   
-   dbg("Temp data in analyze.filter",tempTableData);
-   
-                                         
-   analyze.totals.totalTimeHMS = timeFromSeconds(totalTime);   
-   analyze.totals.totalTimeDecimal = hoursFromSeconds(totalTime,2);                                          
-   analyze.totals.totalBillableTimeHMS = timeFromSeconds(totalBillableTime);                           
-   analyze.totals.totalBillableTimeDecimal = hoursFromSeconds(totalBillableTime,2);           
-   analyze.tableData = tempTableData;
-   
-   stats.avgSessionLength = timeFromSeconds(totalTime/stats.sessions);
-   
-   clearTemplate("analyze-data-row-template");
-   
-   for(var i = 0; i < analyze.tableData.length; i++){          
-      template(analyze.tableData[i],"analyze-data-row-template");       
-   }
-   
-   clearTemplate("analyze-totals-template");
-   template(analyze.totals,"analyze-totals-template");  
-           
-   clearTemplate("analyze-stats-template");
-   template(stats,"analyze-stats-template");
-   
-   if(!tempTableData[0]){
-     document.getElementById("no-data-found-table").style.display = "table-row";
-   }else{
-     document.getElementById("no-data-found-table").style.display = "none";           
-   }        
-          
-}  
-
-settingsView.show = function(){
-  
+    return (diffMs/1000);
  
-  if(ttData.settings.length != defaultSettings.length){
-      for (key in defaultSettings){
-        if(!ttData.settings[key]){
-           ttData.settings[key] = defaultSettings[key]
-        }      
-      }    
-  }
-  
-  var templateData = [];
-  
-  for(field in editFields.settings){
-     var templateRow = {
-       label: editFields.settings[field].label,
-       input: makeFormInput(editFields.settings[field].type,{
-         value:ttData.settings[field],
-         id: "settings-"+field+"input"
-       }).outerHTML         
-     };
-     
-     templateData.push(templateRow);
-  
-  }
-  
-  
-  template(templateData,"settings-item-template");
-  
-  gebi("client-controls").style.display = "none";  
-  gebi("project-controls").style.display = "none";
-    
-}
-settingsView.hide = function(){
-  
-  gebi("client-controls").style.display = "block";  
-  gebi("project-controls").style.display = "block";
-}
-settingsView.save = function(){
-
-  for(field in editFields.settings){
-     ttData.settings[field] = gebi("settings-"+field+"input").value;
-  }
-  
-  dbg("Settings after save",ttData.settings);
-  ttSave();  
-  setFeedback('Settings updated'); 
 }
 
 
 
-makeFormInput = function selfMakeFormInput (type,attribs){
+/* ####################### UTILITY FUNCTIONS ########################## */
 
-   var input;
-   
-  if(type == "boolean"){
-    attribs.options = {"true":"Yes","false":"No"};
-    type = "select";
+
+function gebi(id){
+  return document.getElementById(id);
+}
+
+
+function pad(n){return n<10 ? '0'+n : n;}
+
+function truncate(str, limit, pad) {
+   pad = pad || "...";
+   if(str.length > limit){
+      return str.substring(0,limit)+pad;
+   }else{
+      return str;
+   }
+}
+
+
+
+function newId(name,type){
+  
+  id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+    return v.toString(16);
+});
+  
+  return id;
+}
+
+
+function dbg(text,test_data){
+  if(test_data){
+    console.log(text,test_data);
+  }else{
+    console.log(text);  
   }  
-    
-  if(type == "text"){
-    input = document.createElement("input");
-    input.type = "text";
-  }else if(type == "select"){
-    input = document.createElement('select');
-    for (var optkey in attribs.options){
-      var option = new Option(attribs.options[optkey],optkey);
-      input.options.add(option);               
-    } 
-  }else if(type == "textarea"){
-    input = document.createElement("textarea");
-    input.innerHTML = attribs.value || "";    
-  }
-  
-  dbg("incoming attributes",attribs); 
-  dbg("input element before setting attribs",input);
-  
-  inputAttributes = ["id","value","name","className","style"];
-  
-  for (i = 0; i < inputAttributes.length; i++){
-  
-     var item = inputAttributes[i];
-    
-     if(attribs[item]){
-       input.setAttribute(item,attribs[item]);
-     }
-  }
-       
-  dbg("Input after setting attributes",input);
-  return input;
 }
 
+function getSetting(name){
+  return ttData.settings[name];
+}
 
-function emitEvent(type,action,value){
-  if(type == "task"){
-    if(action == "deleted" || action == "edited" || action == "added" || action == "updated" ){
-      if(typeof currentView.filter == "function"){
-         currentView.filter();
-      }
-      if(typeof currentView.update == "function"){
-         currentView.update();
-      }      
-      
-    }    
-  }else if(type == "client"){
-    if(action == "set"){
-      setProject("all");
-      
-      if(typeof currentView.setClient == "function"){
-         currentView.setClient(value);
-      }else{
-        
-        if(typeof currentView.filter == "function"){
-           currentView.filter();
-        }
-        if(typeof currentView.update == "function"){
-           currentView.update();
-        }       
-      
-      }          
+// Safely count object members
+function getMemberCount(object){
+  member_count = 0;
+  
+  if(typeof object == "object"){
+    for (item in object){
+       member_count += 1;
     }
-  }else if(type == "project"){
-    if(action == "set"){
-      if(typeof currentView.setProject == "function"){
-         currentView.setProject();
-      }           
-      if(currentView == taskList){  
-        if(value == "all" || value == ""){        
-            delete taskList.projectFilter;   
-        }else{
-            //project_select.options = makeSelectOptions(ttData.clients[newVal].projects,true,{text:"- All projects -",value:"all"});               
-            taskList.projectFilter = {
-              type : "project",
-              field : "id",
-              condition : "equals",
-              value : value
-            };
-            
-        }
-        taskList.filter();
-        taskList.update();            
-      }               
-    }  
-  }
-}
-
-
-
- 
-                   
+  }               
+  
+  return member_count;  
+}     

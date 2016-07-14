@@ -57,9 +57,9 @@
                     <option value="all">- All Clients -</option>
                     
               </select>
-              <a href="#void" class="button edit" title="Edit" onClick="showEditForm('client')"><i class="fa fa-pencil" aria-hidden="true"></i>
-  </a><a href="#void" class="button" onClick="addClientForm()"><i class="fa fa-plus" aria-hidden="true"></i>
-  </a>
+  <a href="#void" class="button" onClick="addClientForm()"><i class="fa fa-plus" aria-hidden="true"></i>
+  </a>                   
+              <a href="#void" id="edit-client-button" class="button edit" title="Edit" onClick="showGeneralEditForm('client')"><i class="fa fa-pencil" aria-hidden="true"></i></a>
               </div>
             </form>
           </div>
@@ -79,7 +79,7 @@
                 <select name="project_id" id="project-select" onchange="setProject()">
                       <option value="all" style="color: #aaaaaa"> - All Projects - </option>
                 </select>
-                <a href="#void" class="button edit" id="edit-project-button" onClick="showEditForm('project')" style="display:none;"><i class="fa fa-pencil" aria-hidden="true"></i></a><a href="#void" class="button" onClick="addProjectForm()"><i class="fa fa-plus" aria-hidden="true"></i></a>
+                <a href="#void" class="button edit" id="edit-project-button" onClick="showGeneralEditForm('project')" style="display:none;"><i class="fa fa-pencil" aria-hidden="true"></i></a><a href="#void" class="button" onClick="addProjectForm()"><i class="fa fa-plus" aria-hidden="true"></i></a>
               </div>
             </form>                                
           </div>
@@ -88,10 +88,10 @@
       <div class="clearfix"></div>
       
       <!-- TaskList -->
-      <div id="taskList-view" class="view-container">     
+      <div id="taskList-view" class="view-container" style="display: none">     
 
          
-           <div id="task-list" style="display:none">
+           <div id="task-list">
                 <div id="tasklist-new-task-form">
                   
                   <form method="post" id="task-form" action="">
@@ -104,9 +104,9 @@
                 
                 <div class="task-list-item" id="task-list-item-template">
                     <div class="task {{task.status}}" style="display:flex;" onDblClick="showGeneralEditForm('task','{{task.id}}')">
-                      <div style="width: 80%; flex: 1">
-                     
-                      {{checkCompleted}} {{task.name}} <span class="task-meta">{{task.displayStatus}} {{metaSeparator}} {{task.prettyTime}}</span> <span class="fa-stack" style="font-size: 0.6em;" class="billability" ><i class="fa fa-circle fa-2x fa-stack-2x"></i><i class="fa fa-usd fa-lg fa-stack-1x fa-inverse"></i></span> </span> 
+                      <div style="width: 80%; flex: 1">                    
+                      {{checkCompleted}} {{task.truncateName}} 
+                      <span class="task-meta">{{task.metaParentage}}{{task.metaDisplayStatus}}{{task.metaPrettyTime}} <span class="fa-stack billability" style="font-size: 0.6em; display:{{billable_display}}"><i class="fa fa-circle fa-2x fa-stack-2x"></i><i class="fa fa-usd fa-lg fa-stack-1x fa-inverse"></i></span> </span> 
                       </div>
                       <div style="width: 20px; flex:0.05; font-size: 1.2em; margin-top: 2px;">
                         <i onClick="startGeneralSession('{{task.id}}')" style="cursor:pointer; color:#77aa88;" class="fa fa-play-circle fa-lg"></i>
@@ -182,7 +182,7 @@
                   <td>{{client}}</td>
                   <td>{{project}}</td>
                   <td>{{task}}</td>
-                  <td>{{start_time}}</td> 
+                  <td>{{start_time}}{{session_edit}}</td> 
                   <td style="text-align:right">{{durationHMS}}</td>   
                   <td style="text-align:right">{{durationDecimal}}</td>
               </tr>
@@ -226,6 +226,10 @@
     <div id="active-session">
     </div>
     
+    <div id="delete-confirm" style="display: none;" class="modal-popup centered-box">
+        <div id="delete-confirm-message"></div>
+        <a class="button" id="delete-confirm-yes">Yes</a> <a class="button" id="delete-confirm-no">No</a>   
+    </div>    
     
     <div id="edit-popup" style="display: none;" class="modal-popup centered-box">
         <div id="edit-field-template" style="display:none" class="edit-field">
@@ -240,8 +244,6 @@
     </div>
     </div>
     
-    
-    <script type="text/javascript" src="js/rating.js"></script>  
     <script type="text/javascript">
   /*     
     var callback = function(rating) { alert(rating); };

@@ -43,7 +43,7 @@ td.header{
 
 .notice{
   background-color: #eeefff;
-  border: 1px solid #aaabbb;
+  /* border: 1px solid #aaabbb; */
 } 
 .success{                      
   background-color: #ccffcc;
@@ -143,6 +143,13 @@ input[type=text], select, textarea{
 #edit-popup{
   text-align:right;
 }
+
+#edit-popup h3{
+  text-align: center;
+  margin-top: -0.5em;
+  color: #444;
+}
+
 /*                                                    
 input.button-end-field{
   display: inline-block;
@@ -189,7 +196,7 @@ input.button-end-field:active{
 }
 
 .modal-bg{
-  position: absolute;
+  position: fixed;
   top:0;
   left:0;
   width:100%;
@@ -350,9 +357,17 @@ color: #000;
   margin-left: 20px;
 }
 
+.task-meta span:before{
+  content: " | ";
+}
+ 
+.task-meta span:first-child:before{
+  content: "";
+}
+ 
 
 /* Control Box Styles */
-#client-project-controls, .view-container, #header{
+#client-project-controls, .view-container, #header, #feedback{
   margin: 3%;
 }
 
@@ -524,6 +539,35 @@ color: #000;
     width: 100%;
     margin-left: 0;
     margin-bottom: 1em;
+  }
+  
+  .centered-box{
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    -webkit-transform: none;
+    transform: none;
+  }
+
+  .modal-popup{
+    width:100%;
+    height: 100%;
+    background-color: #fff;
+    padding: 2em;
+    border: 0;
+    max-width: none;
+  }
+  
+  #edit-popup input, #edit-popup select, #edit-popup textarea {
+    width: 100%;
+  }
+  .edit-field input, .edit-field select, .edit-field textarea {
+    margin-right: 15px;
+    margin-left: 0px;
+  }
+  
+  #edit-popup{
+    text-align: left;
   }
   
 }
