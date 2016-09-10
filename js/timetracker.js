@@ -38,6 +38,10 @@ var startPicker = '';
 
 var lastTaskSaveTime;
 
+var current_client = {};   
+var current_project = {};
+var current_task = {};
+
 
 var types = ['user','client','project','task','session'];
 
@@ -70,7 +74,17 @@ var editFields = {
     reminder_delay : {
       label : "Reminder delay",
       type : "text"
-    }   
+    }, 
+    default_task_sort : {
+      label : "Default task sort",
+      type : "select",
+      options :{"name":"Name", "priority":"Priority", "status":"Status", "time":"Time","Session count":"sessionCount","lastSessionTime":"Most recent session"}            
+    }, 
+    default_task_sort_direction : {
+      label : "Default task sort direction",
+      type : "select",
+      options :{"asc":"Ascending", "desc":"Descending"}            
+    }    
   },
   client : {
     name : {
@@ -262,7 +276,16 @@ function ttInit(){
       continueSession();
    }      
    
+   /* Load plugins! */
+   for (pluginId in plugins){
+     var scriptEl = document.createElement('script');
+     scriptEl.src = "plugins/"+plugins[pluginId].name+"/"+plugins[pluginId].name+".conf.js";
+     document.getElementsByTagName("head")[0].appendChild(scriptEl);
+   } 
+   
 
+   
+   
    
    
 }
@@ -289,11 +312,15 @@ function saveClient(){
   
   emitEvent('client','add');
   
-  // All this stuff goes to view functions or dispatcher...
-  updateSelectOptionsFromData('client'); 
-  cancelAddClient();    
+  current_client = ttData.clients[new_client.id];
   
-  setClient(new_client.id); 
+  emitEvent('client','set',new_client.id);
+  
+  // All this stuff goes to view functions or dispatcher...
+  //updateSelectOptionsFromData('client'); 
+  //cancelAddClient();    
+  
+  //setClient(new_client.id); 
   
   setFeedback('Client saved','success'); 
   
@@ -314,20 +341,20 @@ function setClient(clientId){
                                          
     current_client = "all";
     
-    gebi('project-controls').style.display = "none"; // Move 
+    //gebi('project-controls').style.display = "none"; // Move 
     
   }else{
   
     
-    gebi('project-controls').style.display = "block";  // Move  
+    //gebi('project-controls').style.display = "block";  // Move  
   
     current_client = ttData.clients[client_select.value];
     
-    current_project = '';  // Move   
     
-    $("#edit-project-button").hide();  // Move 
+    //$("#edit-project-button").hide();  // Move 
     
     // Count how many projects this client has
+    /*
     project_count = 0;
     
     if(typeof current_client.projects == "object"){
@@ -345,17 +372,22 @@ function setClient(clientId){
     }
     
     $('#project-controls').show();
-      
+    */  
   }
-       
+  
+  /*     
     
   if(currentView.setClient){
     currentView.setClient(clientId);
   }
+  */
+  
+  current_project = 'all';   
   
   dbg("Sending client to emitEvent",clientId);
   
-  emitEvent("client","set",clientId);
+  emitEvent("client","set",clientId);    
+  emitEvent("project","set","all");
                                               
   ttSaveCurrent();
   
@@ -366,7 +398,7 @@ function setClient(clientId){
 
 /* ######################### TRACK PROJECT CONTROLS ######################### */
 
-
+/*
 function addProjectForm(){
    document.getElementById('add-project-form').style.display = "block";
    document.getElementById('select-project-form').style.display = "none"; 
@@ -377,6 +409,8 @@ function cancelAddProject(){
   document.getElementById('add-project-form').style.display = "none";
   document.getElementById('select-project-form').style.display = "block";
 }
+
+*/
 
 function saveProject(){
 
@@ -392,8 +426,12 @@ function saveProject(){
   
   ttData.clients[current_client.id].projects[new_project.id] = new_project;  
   ttSave();   
+  
+  emitEvent("project","add",new_project.id);  
+  /*
   updateSelectOptionsFromData('project'); 
-  cancelAddProject();            
+  cancelAddProject();         
+  */   
   setProject(new_project.id);   
   setFeedback('Project saved','success');   
 }
@@ -411,6 +449,11 @@ function setProject(id){
   }
   
   current_task = '';
+                          
+  
+  dbg("P ID in setP()",id);  
+  dbg("P ID in setP()",id);
+  
   
   if(id != 'all' && id != ''){  
    
@@ -418,12 +461,14 @@ function setProject(id){
   
     // This could be replaced with a call to getItemById(), but that would be slower, so we'll leave it like this for now..
   
-    current_project = ttData.clients[current_client.id].projects[project_select.value];       
+    current_project = ttData.clients[current_client.id].projects[id];       
       
   }else{
     current_project = '';
   }
-   
+  
+  dbg("Current P in setP()",current_project);
+                                           
    
   emitEvent('project','set',id);
   
@@ -613,8 +658,10 @@ function endSession(){
   taskList.update(); // Move
   
   emitEvent('session','ended');
+  
+  dbg("Auto synch setting",getSetting("auto_synch"));
    
-  if(getSetting("auto_synch") == "true"){
+  if(getSetting("auto_synch") == "yes"){
     synchToServer();
   }
 
@@ -821,7 +868,7 @@ function deleteGeneralFromEditForm(type,id){
     ttSave();              
     setFeedback(type+' deleted.');
     
-    emitEvent(type,"deleted",id); 
+    emitEvent(type,"delete",id); 
     cancelEditForm(); 
   }  
 } 
@@ -961,7 +1008,7 @@ function emitEvent(type,action,value){
 
 
   if(type == "task"){
-    if(action == "deleted" || action == "edited" || action == "added" || action == "updated" ){
+    if(action == "delete" || action == "edited" || action == "added" || action == "updated" ){
       if(typeof currentView.filter == "function"){
          currentView.filter();
       }
@@ -1038,6 +1085,8 @@ clientControls.show = function(){
 
   addEventWatcher('client','add',function(id){
     clientControls.update();   
+    dbg("Calling cancelAddClientFOrm in client add event watcher");
+    clientControls.cancelAddClientForm();
   },'clientControls');  
          
   addEventWatcher('client','set',function(id){
@@ -1111,6 +1160,8 @@ projectControls.show = function(){
     
       addEventWatcher('project','set',function(id){
       
+        dbg("Project set watcher fired");
+      
         if(id == "all" || id == ""){                                         
           gebi("edit-project-button").style.display = "none";
         }else{
@@ -1127,6 +1178,19 @@ projectControls.show = function(){
           projectControls.show();
         }
        
+      },'projectControls');
+      
+      addEventWatcher('project','delete',function(id){
+      
+        dbg("Project delete watcher fired");
+        
+        setProject("all");
+        
+        if(current_client.projects.length < 1){                                         
+          projectControls.showAddProjectForm();       
+        }
+                
+        projectControls.update();   
       },'projectControls');    
   }
    
@@ -1141,12 +1205,16 @@ projectControls.hide = function(){
 }
 
 projectControls.update = function(){
+  
+    dbg("Updating project controls");
 
     var options = [];
     
     if(typeof current_client == "object" && current_client != "all"){
     
-      if(getMemberCount(current_client.projects) > 0){          
+      if(getMemberCount(current_client.projects) > 0){      
+        projectControls.cancelAddProjectForm();    
+        
         for (project_id in current_client.projects){
            options.push([project_id,current_client.projects[project_id].name]);
         }
@@ -1166,6 +1234,10 @@ projectControls.update = function(){
         if(typeof current_project == "object"){
            currentValue = current_project.id || "all";
         }    
+        
+        dbg("Setting project select value to",currentValue); 
+        dbg("Current_project",current_project);
+        
         gebi("project-select").value = currentValue;       
       }else{
         projectControls.showAddProjectForm();
@@ -1267,6 +1339,12 @@ taskList.show = function(){
       };  
   }
   
+  if(!taskList.sortBy){
+    taskList.sortBy = getSetting('default_task_sort'); 
+    taskList.sortDirection = getSetting('default_task_sort_direction'); 
+  }
+  dbg("Tasklist.sortBy",taskList.sortBy);
+  
   taskList.update();
   
 }
@@ -1295,10 +1373,28 @@ taskList.filter = function(){
         
         if(!this.task.time){
           this.task.time = 0;
-          for (var sesId in this.task.sessions){          
-            this.task.time += timeDiffSecsFromString(this.task.sessions[sesId].start_time,this.task.sessions[sesId].end_time);
+          for (var sesId in this.task.sessions){
+            if(this.task.sessions[sesId].start_time && this.task.sessions[sesId].end_time){
+                this.task.time += timeDiffSecsFromString(this.task.sessions[sesId].start_time,this.task.sessions[sesId].end_time);            
+            }          
+
           }
         }
+        
+        this.task.sessionCount = getMemberCount(this.task.sessions);
+        
+        if(this.task.sessionCount > 0){
+          var sesKeys = Object.keys(this.task.sessions);
+          var lastSession = this.task.sessions[sesKeys[sesKeys.length-1]];
+                
+          this.task.lastSessionTime = this.task.sessions[sesKeys[sesKeys.length-1]].end_time;       
+        }else{
+          this.task.lastSessionTime = "";
+        }
+
+
+ 
+        
         
         this.task.meta = {};
         
@@ -1322,7 +1418,7 @@ taskList.filter = function(){
           this.task.metaParentage =  "";
         }
                             
-        this.task.truncateName = truncate(this.task.name,35);
+        this.task.truncateName = truncate(this.task.name,55);
         
         
         if(this.task.time > 0){
@@ -1358,17 +1454,18 @@ taskList.sort = function(field){
 taskList.sortData = function(field){
 
     //taskList.sortDirection = "asc"; 
-        
-    if(taskList.sortBy == field){
-      if(taskList.sortDirection == "asc"){
-        taskList.sortDirection = "desc";
+    if(field){   
+      if(taskList.sortBy == field){
+        if(taskList.sortDirection == "asc"){
+          taskList.sortDirection = "desc";
+        }else{
+          taskList.sortDirection = "asc";     
+        }
       }else{
-        taskList.sortDirection = "asc";     
+        taskList.sortBy = field;
       }
-    }else{
-      taskList.sortBy = field;
-    }
-
+    } 
+    
     taskList.tasks.sort(function(a, b) {
    
       if(!a[taskList.sortBy]){
@@ -1377,13 +1474,14 @@ taskList.sortData = function(field){
       if(!b[taskList.sortBy]){
         b[taskList.sortBy] = '';
       }
-      
-      if(taskList.sortBy == "time"){
+      // Numeric sort
+      if(taskList.sortBy == "time" || taskList.sortBy == "sessionCount"){
         if(taskList.sortDirection == "desc"){
-          return b.time-a.time; 
+          return b[taskList.sortBy]-a[taskList.sortBy]; 
         }else{
-          return a.time-b.time;        
+          return a[taskList.sortBy]-b[taskList.sortBy];        
         }
+      // String sort
       }else{  
         if(taskList.sortDirection == "desc"){
           return b[taskList.sortBy].toString().localeCompare(a[taskList.sortBy].toString());
@@ -1506,6 +1604,8 @@ analyze.show = function(){
             startTime : "all",
             endTime : "all"       
     }
+    
+    
 
        
     if(!analyze.startPicker){   
@@ -1562,6 +1662,83 @@ analyze.setClient = function(clientId){
 analyze.setProject = function(projectId){
     analyze.filters.projectId = current_project.id || "all";
     analyze.filter(); 
+}
+
+analyze.filter2 = function (){
+  analyze.totals = {
+    time : 0,
+    billableTime : 0,
+    sessionCount : 0
+  };  
+  
+  analyze.data = [];
+  var fs = [];
+  
+  /* Convert filters. Eventually these should start in loop-compatible filter format */            
+  if(analyze.filters.clientId != "all"){
+    fs.push({
+      condition : "equals",
+      field: "id",
+      type : "client",
+      value : analyze.filters.clientId    
+    });
+  }
+  if(analyze.filters.projectId != "all"){
+    fs.push({
+      condition : "equals",
+      field: "id",
+      type : "project",
+      value : analyze.filters.projectId    
+    });
+  }
+  if(analyze.filters.startTime != "all"){
+    fs.push({
+      condition : ">",
+      field: "start_time",
+      type : "session",
+      value : analyze.filters.startTime    
+    });
+  }
+  if(analyze.filters.endTime != "all"){
+    fs.push({
+      condition : "<",
+      field: "end_time",
+      type : "session",
+      value : analyze.filters.endTime    
+    });
+  }
+     
+  loopData(fs,function(){
+   
+      analyze.data[this[this.level].id] = {
+        type : this.level,
+        name : this[this.level].name,
+        time : 0,                          
+        billableTime : 0      
+      };
+      
+      if(this.level == "task"){
+        var taskTotal = 0;
+        
+        for (var sesId in this.task.sessions){
+          if(this.task.sessions[sesId].start_time && this.task.sessions[sesId].end_time){             
+             taskTotal += timeDiffSecsFromString(this.task.sessions[sesId].start_time,this.task.sessions[sesId].end_time);            
+          }          
+        }
+        
+        if(this.task.billable == true){           
+            analyze.data[this.client.id].billableTime += taskTotal;  
+            analyze.data[this.project.id].billableTime += taskTotal;  
+            analyze.data[this.task.id].billableTime += taskTotal;
+        }
+        
+        analyze.data[this.client.id].time += taskTotal;  
+        analyze.data[this.project.id].time  += taskTotal;  
+        analyze.data[this.task.id].time  += taskTotal;
+     
+      }                       
+   }); 
+   
 }     
       
 analyze.filter = function (){
@@ -1647,8 +1824,12 @@ analyze.filter = function (){
      projectTotal += flatData[row].duration;          
      totalTime += flatData[row].duration;
      
-     if(flatData[row].billable){
+     dbg("Billableness",flatData[row].billable);
+     
+     if(flatData[row].billable == true || flatData[row].billable == 1 || flatData[row].billable == "true"){
         totalBillableTime += flatData[row].duration;
+     }else{
+        dbg("Not Billable",flatData[row]);     
      }
      
      lastRow = flatData[row];
@@ -1709,8 +1890,68 @@ analyze.filter = function (){
      document.getElementById("no-data-found-table").style.display = "table-row";
    }else{
      document.getElementById("no-data-found-table").style.display = "none";           
-   }        
+   } 
+   
+   // analyze.chart();       
           
+}
+
+analyze.chart = function(){
+
+    type = "project";
+
+    dbg("analyze chart called");
+    var labels = [];
+    var data = [];
+    
+    for (id in analyze.data){ 
+      if(analyze.data[id].type == type){
+         labels.push(analyze.data[id].name);
+         data.push(analyze.data[id].time);
+      }    
+    }
+
+    var ctx = document.getElementById("bar-chart");
+    var barChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Time',
+                data: data,
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.2)',
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(255, 206, 86, 0.2)',
+                    'rgba(75, 192, 192, 0.2)',
+                    'rgba(153, 102, 255, 0.2)',
+                    'rgba(255, 159, 64, 0.2)'
+                ],
+                borderColor: [
+                    'rgba(255,99,132,1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)'
+                ],
+                borderWidth: 1
+            }]
+
+        },
+        options: {
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero:true
+                    }
+                }]
+            }
+        }
+    });
+
+    gebi("analyze-chart").style.display = "block";
+
 }  
 
 
@@ -1739,9 +1980,12 @@ settingsView.show = function(){
   
   for(field in editFields.settings){
   
+       
+  
        inputs[field] = makeFormInput(editFields.settings[field].type,{
          "value":ttData.settings[field],
-         "id": "settings-"+field+"input"
+         "id": "settings-"+field+"input",
+         "options" : editFields.settings[field].options
        });
        
        var templateRow = {
@@ -1864,6 +2108,9 @@ function fillTemplate(data,code){
 
 
 function makeFormInput(type,attribs){
+
+  dbg("Make form input type",type);    
+  dbg("Make form input attribs",attribs);
 
   var inputEl;
    
@@ -2057,10 +2304,58 @@ function updateSelectOptionsFromData(type,idSuffix){
 /* ############################ SERVER SYNCHING ############################  */
 
 
+function synch(){
+  synchToServer();
+
+}
+
+function synchIconStatus(status){
+  if(status == "synching"){
+  
+    gebi("synch-icon").className = "fa fa-refresh fa-lg fa-spin fa-flip-horizontal";  
+    gebi("synch-icon").style.color = "#669366";  
+    
+  }else if(status == "error"){
+  
+    gebi("synch-icon").className = "fa fa-refresh fa-lg";
+    gebi("synch-icon").style.color = "red";  
+    
+  }else if(status == "normal"){
+  
+    gebi("synch-icon").className = "fa fa-refresh fa-lg";  
+    gebi("synch-icon").style.color = "";
+    
+  }else if(status == "bulge"){
+  
+    gebi("synch-icon").className = "fa fa-refresh fa-2x";  
+        
+    setTimeout(function(){ 
+      synchIconStatus("normal");
+    }, 200);
+    
+  }else if(status == "done"){
+  
+    gebi("synch-icon").className = "fa fa-refresh fa-lg";   
+    gebi("synch-icon").style.color = "green";
+    
+    setTimeout(function(){ 
+      synchIconStatus("normal");
+    }, 3000);
+    
+  }
+}
+
+
+
 function synchToServer(){ 
       
-  
+
+   
+   
+   
    setFeedback('&nbsp;<i class="fa fa-info-circle fa-spin fa-lg"></i>&nbsp; &nbsp;Synching to server. This may take a minute....','notice',true);
+
+   synchIconStatus("synching");
 
    // Do normal Ajax synch if we're in the web version
    if(window.location.hostname.search("photosynth.ca") > -1){
@@ -2075,9 +2370,12 @@ function synchToServer(){
          success : function(result){
             setFeedback('Data successfully sent to server');
             document.getElementById('json-output').innerHTML = result;
+            dbg("Success on outbound synch. Starting inbound synch.");
+            synchFromServer();
          },
          error: function(xhr, ajaxOptions, thrownError){
             setFeedback('Error synching to server: '+thrownError);
+            synchIconStatus("error");
          },
          
          
@@ -2117,10 +2415,12 @@ function synchFromServer(){
             ttData = server_data;  
             ttSave();                      
             setFeedback('Data successfully received from server.');
+            synchIconStatus("done");
 
          },
          error: function(xhr, ajaxOptions, thrownError){
             setFeedback('Error synching from server: '+thrownError);
+            synchIconStatus("error");
          },
                  
       });
@@ -2188,7 +2488,8 @@ function nodeRequest(direction){
            server_data = JSON.parse(resultData);   
          }catch(err){
            setFeedback('Error parsing data from server. Error:'+err,'error');
-           throw 'JSON parsing exception';           
+           throw 'JSON parsing exception'; 
+           synchIconStatus("error");          
          }                  
                                     
          if(direction == 'from'){                            
@@ -2197,13 +2498,16 @@ function nodeRequest(direction){
              ttSave();      
                              
              setFeedback('Data successfully received from server.');
+             synchIconStatus("done");
           
         }else if(direction == 'to'){            
              setFeedback('Server synch complete. '+server_data.updateCount+" records updated, "+server_data.insertCount+" new records added");
+             synchFromServer();
         }        
                    
       }else{
         setFeedback('Server synch failed! Status:'+result.statusCode,'error',true);
+        synchIconStatus("error");
       }
       
       
@@ -2214,6 +2518,7 @@ function nodeRequest(direction){
   request.on('error', function(e){
     //console.log('problem with request:'+e.message);
     setFeedback('Error synching to server: '+e.message);
+    synchIconStatus("error");
   });
 
   
@@ -2492,6 +2797,28 @@ function deleteItemById(type,id){
     }  
 } 
 
+/* An efficient method of updating single values if the full tree is known */
+function updateValueByBranch(branchSpec,field,value){
+
+  var bs = branchSpec;
+  
+  // Don't allow dangerous updates...
+  if(field == "projects" || field == "tasks" || field == "sessions"){
+    console.log("Invalid field name in updateValueByBranch()",field);
+    return;
+  }  
+  
+  if(bs.client && bs.project && bs.task && bs.session){
+     ttData.clients[bs.client].projects[bs.project].tasks[bs.task].sessions[bs.session][field] = value;
+  }else if(bs.client && bs.project && bs.task){
+     ttData.clients[bs.client].projects[bs.project].tasks[bs.task][field] = value;
+  }else if(bs.client && bs.project){
+     ttData.clients[bs.client].projects[bs.project][field] = value;
+  }else if(bs.client){
+     ttData.clients[bs.client][field] = value;
+  }
+
+}
 
 /* Older version, based on current values (don't use) */
 function updateDataObject(level,data){
@@ -2578,8 +2905,8 @@ function prettyTime(s){
     var minutes = parseInt(s/60) % 60;
     var seconds = parseInt(s) % 60;
     
-    hrsTxt = " hour";  
-    minsTxt = " minute";
+    hrsTxt = " hr";  
+    minsTxt = " min";
     
     if(hours > 1){
       hrsTxt += "s";  
@@ -2597,7 +2924,7 @@ function prettyTime(s){
       out += minutes.toString()+minsTxt;
     }
     if(!minutes && !hours){
-      out = seconds.toString()+" seconds";
+      out = seconds.toString()+" sec";
     }
     
     return out;
@@ -2691,3 +3018,16 @@ function getMemberCount(object){
   
   return member_count;  
 }     
+
+function addScript(src){
+  var scriptEl = document.createElement('script');
+  scriptEl.src = src;
+  document.getElementsByTagName("head")[0].appendChild(scriptEl);
+}    
+function addCss(src){
+  var cssEl = document.createElement('link');
+  cssEl.href = src;
+  cssEl.rel = "stylesheet";
+  cssEl.type = "text/css";
+  document.getElementsByTagName("head")[0].appendChild(cssEl);
+}
