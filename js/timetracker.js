@@ -165,7 +165,10 @@ if(typeof require === "function"){
   var http = require('http');
 }
 
-Notification.requestPermission();
+if(typeof Notification == "object"){
+  Notification.requestPermission();
+}
+
 
 
 /* ############################### INITIALIZE ################################# */
@@ -2385,8 +2388,8 @@ function synchToServer(){
 
    synchIconStatus("synching");
 
-   // Do normal Ajax synch if we're in the web version
-   if(window.location.hostname.search("photosynth.ca") > -1){
+   // Do normal Ajax synch if we're not in node
+   if(typeof http != "object"){
 
 
      $.ajax({
@@ -2409,12 +2412,10 @@ function synchToServer(){
 
     });
 
-   }else if(typeof http === "object"){
+   }else{
 
       nodeRequest('to');
 
-   }else{
-      setFeedback('Current environment doesn\'t allow server synching!');
    }
 }
 
@@ -2423,12 +2424,13 @@ function synchFromServer(){
 
    setFeedback('<i class="fa fa-lightbulb-o fa-spinner fa-lg"></i> Synching from server. This may take a minute....');
 
-  if(window.location.hostname.search("photosynth.ca") > -1){
+  if(typeof http != "object"){
 
      $.ajax({
          url: 'http://photosynth.ca/timetracker/synch.php?action=synchFromServer&key='+ttData.userKey,
          type: 'POST',
          contentType:'application/json',
+         data:{"action":"synchFromServer"},
          //dataType:'json',
          success : function(result){
 
@@ -2453,12 +2455,10 @@ function synchFromServer(){
 
       });
 
-   }else if(typeof http === "object"){
+   }else{
 
       nodeRequest('from');
 
-   }else{
-      setFeedback('Current environment doesn\'t allow server synching!');
    }
 }
 
