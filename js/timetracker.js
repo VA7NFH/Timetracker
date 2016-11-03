@@ -775,19 +775,30 @@ function deleteLocalStorage(){
 
 
 function editJson(){
-
+  /*
   var dldLink = document.createElement('a');
   dldLink.href = "data:application/json;charset=utf-8,"+JSON.stringify(ttData);
   dldLink.download = "Timetracker-Data-"+moment().format("YYYY-MM-DD_HH-mm-ss")+".JSON";
   dldLink.className = "button";
   dldLink.innerHTML = "Download JSON data";
   gebi('json-output').appendChild(dldLink);
-
+  */
+  gebi('json-output').innerHTML = '';
   var jsonForm = document.createElement('form');
   jsonForm.innerHTML = '<textarea id="edit-json-textarea">'+JSON.stringify(ttData,null,'   ')+'</textarea>';
   gebi('json-output').appendChild(jsonForm);
 
   gebi('json-output').innerHTML += '<a href="#void" class="button" onClick="saveJson()">Save</a>';
+}
+
+function downloadJson(){
+  dbg("Download JSON called");
+  var link = document.createElement('a');
+  link.href = "data:application/json;charset=utf-8,"+JSON.stringify(ttData);
+  link.download = "Timetracker-Data-"+moment().format("YYYY-MM-DD_HH-mm-ss")+".JSON";
+  gebi('json-output').appendChild(link);
+  link.click();
+  link.parentNode.removeChild(link);
 }
 
 function saveJson(){
