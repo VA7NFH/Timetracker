@@ -775,7 +775,19 @@ function deleteLocalStorage(){
 
 
 function editJson(){
-  document.getElementById('json-output').innerHTML = '<form><textarea id="edit-json-textarea">'+JSON.stringify(ttData,null,'   ')+'</textarea></form><a href="#void" class="button" onClick="saveJson()">Save</a>';
+
+  var dldLink = document.createElement('a');
+  dldLink.href = "data:application/json;charset=utf-8,"+JSON.stringify(ttData);
+  dldLink.download = "Timetracker-Data-"+moment().format("YYYY-MM-DD_HH-mm-ss")+".JSON";
+  dldLink.className = "button";
+  dldLink.innerHTML = "Download JSON data";
+  gebi('json-output').appendChild(dldLink);
+
+  var jsonForm = document.createElement('form');
+  jsonForm.innerHTML = '<textarea id="edit-json-textarea">'+JSON.stringify(ttData,null,'   ')+'</textarea>';
+  gebi('json-output').appendChild(jsonForm);
+
+  gebi('json-output').innerHTML += '<a href="#void" class="button" onClick="saveJson()">Save</a>';
 }
 
 function saveJson(){

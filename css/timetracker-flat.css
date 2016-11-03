@@ -1,6 +1,6 @@
 body{
   font-family: 'Roboto', 'sans-serif';
-  margin: 0; 
+  margin: 0;
   -webkit-box-sizing: border-box; /* Safari/Chrome, other WebKit  */
   -moz-box-sizing: border-box;    /* Firefox, other Gecko         */
   box-sizing: border-box;
@@ -14,7 +14,7 @@ div, a, input, select{
 }
 #container{
  /* max-width: 900px; */
-}                                                                    
+}
 
 
 h1{
@@ -46,10 +46,10 @@ td.header{
 .notice{
   background-color: #eeefff;
   /* border: 1px solid #aaabbb; */
-} 
-.success{                      
+}
+.success{
   background-color: #ccffcc;
-}  
+}
 .error{
   background-color: #ffcccc;
 }
@@ -80,7 +80,7 @@ td.header{
   padding-top: 5px;
   padding-bottom: 6px;
   padding-left: 15px;
-  margin-left:0px;     
+  margin-left:0px;
   margin-right:0px;
 }
 */
@@ -91,9 +91,9 @@ td.header{
   width: 15%;
   padding-top: 5px;
   padding-bottom: 6px;
-  padding-left: 0;   
+  padding-left: 0;
   padding-right: 0;
-  margin:0;     
+  margin:0;
   border: 0;
   text-align:center;
 }
@@ -123,30 +123,30 @@ form{
   padding: 0;
 }
 
-input[type=text], select, textarea{  
+input[type=text], select, textarea{
   font-size: 1rem;
   padding: 3 10 3 10px;
   border: 1px solid #bbbbbb;
   display: inline-block;
   color: #333333;
   /* width: 45%; */
-  
+
 }
-      
+
 #edit-popup input,#edit-popup select,#edit-popup textarea{
   width: 60%;
-}      
+}
 
 .edit-field{
   padding-bottom: 1em;
-}      
+}
 
 .edit-field input, .edit-field select, .edit-field textarea{
   margin-left: 15px;
 }
 
 
-  
+
 #edit-popup{
   text-align:right;
 }
@@ -157,7 +157,7 @@ input[type=text], select, textarea{
   color: #444;
 }
 
-/*                                                    
+/*
 input.button-end-field{
   display: inline-block;
   margin: 7px 0 7px 0px;
@@ -172,32 +172,32 @@ input.button-end-field{
   display: inline-block;
   margin: 0;
   border: 0;
-  
+
   border-radius: 5px 0 0 5px;
   padding: 0px 5px 0px 14px;
   width: 85%;
 }
-input.button-end-field:active{   
+input.button-end-field:active{
   border: 0;
 }
 
-.section-title{  
+.section-title{
   padding: 5px;
   background-color: #fff;
-  display: inline-block; 
+  display: inline-block;
 }
 
 .section-title-container{
   margin-top: -30px;
   margin-left: 20px;
 
-  color: #bbbbbb; 
+  color: #bbbbbb;
 }
 
 #current_duration{
-  font-size: 4rem; 
-  font-weight: bold; 
-  padding: 10px 0 10px 0; 
+  font-size: 4rem;
+  font-weight: bold;
+  padding: 10px 0 10px 0;
   font-family:sans-serif;
   color: #888888;
 }
@@ -232,7 +232,7 @@ input.button-end-field:active{
   margin-right: 10px;
 }
 #active-session input[type=text]{
-  width: 100%;
+  width: 96%;
 }
 
 .centered-box{
@@ -273,9 +273,9 @@ a .edit{
 }
 #analyze-controls input:first-child{
   margin-left: 0;
-}  
+}
 #analyze-controls{
-  margin-top: 1em;  
+  margin-top: 1em;
   margin-bottom: 2em;
 }
 /* Table display styles */
@@ -319,7 +319,7 @@ table.datatable{
   color: #aaa;
 }
 
-a.view-switch:hover{ 
+a.view-switch:hover{
   color: #000;
 }
 
@@ -366,11 +366,11 @@ color: #000;
 .task-meta span:before{
   content: " | ";
 }
- 
+
 .task-meta span:first-child:before{
   content: "";
 }
- 
+
 
 /* Control Box Styles */
 #client-project-controls, .view-container, #header, #feedback{
@@ -394,7 +394,7 @@ color: #000;
 }
 
 .control-container select, .control-container input{
-  width: 80%;       
+  width: 80%;
   margin:0;
   border: 0;
   padding: 14px;
@@ -409,7 +409,7 @@ color: #000;
 
 .control-container a:first-of-type{
   border-radius: 0 4px 4px 0;
-  
+
 }
 
 .control-container .button{
@@ -417,10 +417,10 @@ color: #000;
   height: 51px;
   width: 10%;
   padding: 0;
-  padding-top: 17px;           
+  padding-top: 17px;
   margin: 0;
   /* margin-top: -7px !important; */
-  background-color: #f1f1f1;  
+  background-color: #f1f1f1;
   border: 0;
   border-left: 1px solid #e8e8e8;
   color: #888;
@@ -429,23 +429,23 @@ color: #000;
 
 
 .control-container .button:hover{
-  background-color: #ccc;           
+  background-color: #ccc;
 }
 
 .control-title-container{
   margin-top: -13px;
   margin-left: 12px;
   margin-bottom: 0;
-  color: #bbbbbb; 
+  color: #bbbbbb;
 }
 
-.control-title{  
+.control-title{
   font-size: 0.95em;
-  padding-left: 5px;  
-  padding-right: 5px; 
+  padding-left: 5px;
+  padding-right: 5px;
   padding-bottom: 0;
   /* background-color: #fff; */
-  display: inline-block; 
+  display: inline-block;
 }
 
 .rounded{
@@ -477,7 +477,7 @@ color: #000;
   font-size: 0.9em;
   margin-top: 2em;
   background-color: #fff;
-  padding-bottom: 1em;    
+  padding-bottom: 1em;
   padding-top: 1em;
   padding-left: 3%;
   margin-left: -3%;
@@ -498,7 +498,7 @@ color: #000;
   float: left;
   text-align: right;
   color: #666;
-} 
+}
 .settings-input{
   float: left;
   margin-left: 1.2em;
@@ -515,32 +515,32 @@ color: #000;
 
 .rating-star{
   cursor: pointer;
-}    
+}
 .rating-star:hover{
   color: #aa6600;
 }
 
 
 @media all and ( max-width: 650px ) {
-  .control-container { 
-    float: none; 
+  .control-container {
+    float: none;
     width: auto;
-    margin-bottom: 30px; 
+    margin-bottom: 30px;
   }
-  
+
   #header h1{
     font-size: 1.5em;
     margin-left: 10px;
     margin-top: 0;
   }
-  
+
   #view-links span{
     display:none;
   }
-   
+
   .half-width{
-    float: none; 
-    width: auto; 
+    float: none;
+    width: auto;
   }
   .control-container:first-child{
     margin-right: 0;
@@ -549,30 +549,31 @@ color: #000;
     float: none;
     width: 100%;
     text-align: left;
-  }     
+  }
   .settings-input{
     float: none;
     width: 100%;
     margin-left: 0;
   }
 
-  
+
   .settings-input input, .settings-input textarea,   .settings-input select{
     width: 100%
-  }    
-        
+  }
+
   #analyze-controls input{
     width: 100%;
     margin-left: 0;
     margin-bottom: 1em;
   }
-  
+
   .centered-box{
     position: absolute;
     top: 0px;
     left: 0px;
     -webkit-transform: none;
     transform: none;
+    padding:5%;
   }
 
   .modal-popup{
@@ -583,7 +584,7 @@ color: #000;
     border: 0;
     max-width: none;
   }
-  
+
   #edit-popup input, #edit-popup select, #edit-popup textarea {
     width: 100%;
   }
@@ -591,16 +592,17 @@ color: #000;
     margin-right: 15px;
     margin-left: 0px;
   }
-  
+
   #edit-popup{
     text-align: left;
   }
-  
+
   #taskList-options{
     position: relative;
   }
-  
+
+  #current_duration{
+    font-size: 18vw;
+  }
+
 }
-
-
-
