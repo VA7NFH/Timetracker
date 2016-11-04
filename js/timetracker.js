@@ -793,9 +793,16 @@ function editJson(){
 
 function downloadJson(){
   dbg("Download JSON called");
+
+  var json = JSON.stringify(ttData,null,'  ');
+  var blob = new Blob([json], {type: "application/json"});
+  var url  = URL.createObjectURL(blob);
+
+
   var link = document.createElement('a');
-  link.href = "data:application/json;charset=utf-8,"+JSON.stringify(ttData);
-  link.download = "Timetracker-Data-"+moment().format("YYYY-MM-DD_HH-mm-ss")+".JSON";
+  link.href = url;
+  //link.href = "data:application/json;charset=utf-8,'"+JSON.stringify(ttData,null,'  ')+"'";
+  link.download = "Timetracker-Data-"+moment().format("YYYY-MM-DD_HH-mm-ss")+".json";
   gebi('json-output').appendChild(link);
   link.click();
   link.parentNode.removeChild(link);
