@@ -136,7 +136,7 @@ var editFields = {
     billable : {
       label : "Billable",
       type : "select",
-      options : {"true":"Yes", "false":"No"}
+      options : {"1":"Yes", "0":"No"}
     },
     notes : {
       label : "Notes",
@@ -539,12 +539,12 @@ function saveNewTask(projectId,task_name){
 
   if(gebi("billable-input")){
     if(gebi("billable-input").checked == true){
-      new_task.billable = true;
+      new_task.billable = "1";
     }else{
-      new_task.billable = false;
+      new_task.billable = "0";
     }
   }else{
-      new_task.billable = true;
+      new_task.billable = "1";
   }
 
   current_task = new_task;
@@ -1585,8 +1585,8 @@ taskList.refresh = function(){
        }else{
          var completedFlag = "";
        }
-
-       if(task.billable == "true"){
+       dbg(getSetting("show_billability"));
+       if(task.billable == "1" && getSetting("show_billability") == "yes"){
           var billable_display = "inline-block";
        }else{
           var billable_display = "none";
@@ -1774,7 +1774,7 @@ analyze.filter2 = function (){
           }
         }
 
-        if(this.task.billable == true){
+        if(this.task.billable == "1"){
             analyze.data[this.client.id].billableTime += taskTotal;
             analyze.data[this.project.id].billableTime += taskTotal;
             analyze.data[this.task.id].billableTime += taskTotal;
@@ -1874,7 +1874,7 @@ analyze.filter = function (){
 
      dbg("Billableness",flatData[row].billable);
 
-     if(flatData[row].billable == true || flatData[row].billable == 1 || flatData[row].billable == "true"){
+     if(flatData[row].billable == "1" || flatData[row].billable == 1){
         totalBillableTime += flatData[row].duration;
      }else{
         dbg("Not Billable",flatData[row]);
