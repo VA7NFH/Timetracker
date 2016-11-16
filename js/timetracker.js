@@ -290,9 +290,7 @@ function ttInit(){
    }
 
 
-
-
-
+   synchToServer();
 
 }
 
@@ -752,9 +750,7 @@ function saveUserKey(){
   $("#edit-popup").hide();
   $("#edit-popup").html('');
 
-  addClientForm();
-
-  //ttInit();
+  ttInit();
 
 }
 
@@ -1052,7 +1048,7 @@ function emitEvent(type,action,value){
     }
   }
 
-
+  /* This function should end here. Following conditional statements will be removed */
   if(type == "task"){
     if(action == "delete" || action == "edited" || action == "added" || action == "updated" ){
       if(typeof currentView.filter == "function"){
@@ -1135,6 +1131,10 @@ clientControls.show = function(){
     clientControls.cancelAddClientForm();
   },'clientControls');
 
+  addEventWatcher('server','synch',function(){
+    clientControls.update();
+  },'clientControls');
+
   addEventWatcher('client','set',function(id){
     dbg("clientControls client set watcher fired with id",id);
     if(id == "all" || id == ""){
@@ -1205,6 +1205,10 @@ projectControls = {}
 projectControls.show = function(){
 
   if(getEventWatchers('projectControls').length < 1){
+
+      addEventWatcher('server','synch',function(){
+        projectControls.update();
+      },'projectControls');
 
       addEventWatcher('project','set',function(id){
 
@@ -1347,6 +1351,10 @@ taskList.show = function(){
 
   },'taskList');
 
+  addEventWatcher('server','synch',function(){
+    taskList.update();
+    dbg("taskList server synch watcher fired");
+  },'taskList');
 
   addEventWatcher('project','set',function(projectId){
 
@@ -2414,7 +2422,7 @@ function synchIconStatus(status){
 
 function synchToServer(){
 
-   setFeedback('&nbsp;<i class="fa fa-info-circle fa-spin fa-lg"></i>&nbsp; &nbsp;Synching to server. This may take a minute....','notice',true);
+   //setFeedback('&nbsp;<i class="fa fa-info-circle fa-spin fa-lg"></i>&nbsp; &nbsp;Synching to server. This may take a minute....','notice',true);
 
    synchIconStatus("synching");
 
@@ -2476,6 +2484,7 @@ function synchFromServer(){
             ttSave();
             setFeedback('Data successfully received from server.');
             synchIconStatus("done");
+            emitEvent('server','synch');
 
          },
          error: function(xhr, ajaxOptions, thrownError){
@@ -2590,6 +2599,7 @@ function nodeRequest(direction,url){
 
              setFeedback('Data successfully received from server.');
              synchIconStatus("done");
+             emitEvent('server','synch');
 
         }else if(direction == 'to'){
              setFeedback('Server synch complete. '+server_data.updateCount+" records updated, "+server_data.insertCount+" new records added");
