@@ -598,7 +598,7 @@ color: #000;
   }
 
   #taskList-options{
-    position: relative;
+    /*position: relative;*/
   }
 
   #current_duration{
