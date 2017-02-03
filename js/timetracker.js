@@ -785,6 +785,7 @@ function editJson(){
   gebi('json-output').appendChild(jsonForm);
 
   gebi('json-output').innerHTML += '<a href="#void" class="button" onClick="saveJson()">Save</a>';
+  gebi('json-output').style.display = "block";
 }
 
 function downloadJson(){
@@ -2361,22 +2362,25 @@ function updateSelectOptionsFromData(type,idSuffix){
 synchQueue = {}
 synchQueue.queue = [];
 
-synchQueue.add = function(type,id){
+synchQueue.add = function(action,type,id){
   var timestamp = new Date();
-  synchQueue.queue.push({"type":type,"id":id,"timestamp":timestamp});
+  synchQueue.queue.push({"action":action,"type":type,"id":id,"timestamp":timestamp});
   dbg("Synch queue",synchQueue);
   ttData.synchQueue = synchQueue.queue;
 }
 
 
 function synch(){
-
   var queue = ttData.synchQueue.queue;
-  var synchData = [];
+  var synchData = {"update":[], "insert":[],"delete":[]};
 
   for(var key in queue){
      item = queue[key];
-     synchData.push(getItemById(item.type,item.id));
+     if(item.action == "delete"){
+       synchData[action].push(item);
+     }else{
+       synchData[action].push(getItemById(item.type,item.id));
+     }
   }
   dbg(synchData);
   synchToServer(synchData);
